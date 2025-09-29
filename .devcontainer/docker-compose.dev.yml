@@ -1,4 +1,7 @@
 services:
+  ckan-dev:
+    command: sleep infinite
+
   emulator:
     container_name: "eventhubs-emulator"
     image: "mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest"

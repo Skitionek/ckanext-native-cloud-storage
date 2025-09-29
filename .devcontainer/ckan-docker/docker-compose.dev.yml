@@ -8,7 +8,6 @@ volumes:
   home_dir:
 
 services:
-
   ckan-dev:
     build:
       context: ckan/
