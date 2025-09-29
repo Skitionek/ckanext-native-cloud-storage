@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ckanext-native-cloud-storage"
+version = "0.1.0"
+description = "CKAN extension for native cloud storage integration."
+authors = [
+    { name = "Skitionek" }
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.7"
+dependencies = [
+    # Add your runtime dependencies here
+]
+
+[project.urls]
+Homepage = "https://github.com/Skitionek/ckanext-native-cloud-storage"
+
+[tool.setuptools]
+packages = ["ckanext.native_cloud_storage"]
+include-package-data = true
