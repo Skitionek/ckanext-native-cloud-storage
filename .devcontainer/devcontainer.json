@@ -1,7 +1,6 @@
 {
 	"name": "CKAN Dev",
 	"dockerComposeFile": [
-		"ckan-docker/docker-compose.dev.yml",
 		"docker-compose.dev.yml"
 	],
 	"service": "ckan-dev",
