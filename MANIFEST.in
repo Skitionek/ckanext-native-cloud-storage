@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include requirements.txt
+include config/ckan.ini.example
+include .env.example
+recursive-include ckanext/native_cloud_storage *.py
+recursive-include ckanext/native_cloud_storage/templates *.html
+recursive-include ckanext/native_cloud_storage/public *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

@@ -1,0 +1,98 @@
+services:
+  # Azure Storage Emulator (Azurite)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: ckan-azurite
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite_data:/data
+    command: "azurite --silent --location /data --debug /data/debug.log"
+    environment:
+      - AZURITE_ACCOUNTS=devstoreaccount1:Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/devstoreaccount1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Azure Event Hub Emulator
+  eventhub-emulator:
+    image: mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest
+    container_name: ckan-eventhub-emulator
+    ports:
+      - "5672:5672"   # AMQP port
+    environment:
+      - ACCEPT_EULA=Y
+      - EVENTHUB_NAMESPACE=ckan-namespace
+      - EVENTHUB_NAME=ckan-file-events
+    volumes:
+      - eventhub_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5672/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: CKAN development environment
+  ckan-dev:
+    image: ckan/ckan-dev:2.10
+    container_name: ckan-dev
+    ports:
+      - "5000:5000"
+    environment:
+      - CKAN_SQLALCHEMY_URL=postgresql://ckan_default:pass@db/ckan_default
+      - CKAN_DATASTORE_WRITE_URL=postgresql://datastore_write:pass@db/datastore
+      - CKAN_DATASTORE_READ_URL=postgresql://datastore_read:pass@db/datastore
+      - CKAN_SOLR_URL=http://solr:8983/solr/ckan
+      - CKAN_REDIS_URL=redis://redis:6379/1
+      - CKAN_SITE_URL=http://localhost:5000
+      - CKAN__PLUGINS=datastore datapusher native_cloud_storage
+      # Azure Storage Emulator configuration
+      - CKAN__CKANEXT__NATIVE_CLOUD_STORAGE__AZURE__USE_EMULATOR=true
+      - CKAN__CKANEXT__NATIVE_CLOUD_STORAGE__AZURE__CONTAINER_NAME=ckan-storage
+      - CKAN__CKANEXT__NATIVE_CLOUD_STORAGE__AZURE__EVENTHUB_NAME=ckan-file-events
+    volumes:
+      - ckan_config:/etc/ckan
+      - ckan_home:/usr/lib/ckan
+      - ckan_storage:/var/lib/ckan
+      - .:/srv/app/src_extensions/ckanext-native-cloud-storage
+    depends_on:
+      - db
+      - solr
+      - redis
+      - azurite
+      - eventhub-emulator
+
+  # PostgreSQL for CKAN
+  db:
+    image: ckan/ckan-postgres-dev:2.10
+    container_name: ckan-db
+    environment:
+      - DS_RO_PASS=datastore_read
+      - POSTGRES_PASSWORD=pass
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # Solr for CKAN search
+  solr:
+    image: ckan/ckan-solr:2.10-solr9
+    container_name: ckan-solr
+    volumes:
+      - solr_data:/var/solr
+
+  # Redis for CKAN sessions
+  redis:
+    image: redis:7-alpine
+    container_name: ckan-redis
+
+volumes:
+  azurite_data:
+  eventhub_data:
+  ckan_config:
+  ckan_home:
+  ckan_storage:
+  pg_data:
+  solr_data:

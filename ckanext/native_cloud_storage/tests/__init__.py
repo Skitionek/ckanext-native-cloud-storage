@@ -1,0 +1,1 @@
+# Tests for native cloud storage extension
