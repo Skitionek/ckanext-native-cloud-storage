@@ -7,6 +7,7 @@ import ckan.plugins.toolkit as toolkit
 from ckan.common import config
 
 from ckanext.native_cloud_storage.storage import AzureBlobStorage
+from ckanext.native_cloud_storage import commands
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class NativeCloudStoragePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IUploader, inherit=True)
     plugins.implements(plugins.IActions)
+    plugins.implements(plugins.IClick)
     
     def update_config(self, config_):
         """Update CKAN config with plugin settings"""
@@ -30,7 +32,7 @@ class NativeCloudStoragePlugin(plugins.SingletonPlugin):
         """Return the Azure Blob Storage uploader for resources"""
         return AzureBlobStorage()
     
-    def get_storage_uploader(self, upload_to, old_filename=None):
+    def get_uploader(self, upload_to, old_filename=None):
         """Return the Azure Blob Storage uploader for general storage"""
         return AzureBlobStorage(upload_to=upload_to, old_filename=old_filename)
     
@@ -40,6 +42,10 @@ class NativeCloudStoragePlugin(plugins.SingletonPlugin):
             'storage_status': storage_status,
             'storage_migrate': storage_migrate,
         }
+    
+    def get_commands(self):
+        """Register CLI commands"""
+        return commands.get_commands()
 
 
 def storage_status(context, data_dict):
