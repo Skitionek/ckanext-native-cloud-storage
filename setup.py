@@ -41,13 +41,17 @@ setup(
             'black>=20.8b1',
         ]
     },
-    entry_points='''
-        [ckan.plugins]
-        native_cloud_storage=ckanext.native_cloud_storage.plugin:NativeCloudStoragePlugin
-        
-        [babel.extractors]
-        ckan = ckan.lib.extract:extract_ckan
-    ''',
+    entry_points={
+        'ckan.plugins': [
+            'native_cloud_storage = ckanext.native_cloud_storage.plugin:NativeCloudStoragePlugin',
+        ],
+        'ckan.click_commands': [
+            'native_cloud_storage = ckanext.native_cloud_storage.commands:get_commands',
+        ],
+        'babel.extractors': [
+            'ckan = ckan.lib.extract:extract_ckan',
+        ],
+    },
     message_extractors={
         'ckanext': [
             ('**.py', 'python', None),

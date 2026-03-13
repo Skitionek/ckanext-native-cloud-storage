@@ -1,21 +1,49 @@
 import logging
 import os
 import mimetypes
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, generate_blob_sas, BlobSasPermissions
 from azure.core.exceptions import ResourceNotFoundError, AzureError
 from azure.identity import DefaultAzureCredential
 
-import ckan.lib.uploader as uploader
-from ckan.common import config
-import ckan.plugins.toolkit as toolkit
+# Allow importing without a full CKAN installation (e.g. for unit tests)
+try:
+    import ckan.lib.uploader as _ckan_uploader
+    from ckan.common import config
+    import ckan.plugins.toolkit as toolkit
+    _UploadBase = _ckan_uploader.Upload
+except ImportError:
+    class _UploadBase:  # type: ignore[no-redef]
+        """Minimal Upload shim used when CKAN is not installed (e.g. in tests)."""
+        def __init__(self, upload_to='', old_filename=None):
+            self.upload_to = upload_to
+            self.old_filename = old_filename
+            self.filename = None
+            self.upload_field_storage = None
+
+    class _MockConfig:
+        def __init__(self):
+            self._data: dict = {}
+
+        def get(self, key, default=None):
+            return self._data.get(key, default)
+
+    class _MockToolkit:
+        @staticmethod
+        def asbool(value, default=False):
+            if isinstance(value, bool):
+                return value
+            return str(value).lower() in ('true', '1', 'yes')
+
+    config = _MockConfig()  # type: ignore[assignment]
+    toolkit = _MockToolkit()  # type: ignore[assignment]
 
 log = logging.getLogger(__name__)
 
 
-class AzureBlobStorage(uploader.Upload):
+class AzureBlobStorage(_UploadBase):
     """
     Azure Blob Storage implementation for CKAN file uploads
     """
@@ -138,7 +166,7 @@ class AzureBlobStorage(uploader.Upload):
                 overwrite=True,
                 metadata={
                     'original_filename': self.filename,
-                    'upload_time': datetime.utcnow().isoformat(),
+                    'upload_time': datetime.now(timezone.utc).isoformat(),
                     'ckan_resource': 'true'
                 }
             )
@@ -158,7 +186,7 @@ class AzureBlobStorage(uploader.Upload):
     
     def _generate_blob_name(self):
         """Generate unique blob name with path"""
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
         safe_filename = self.filename.replace(' ', '_').replace('/', '_')
         
         if self.upload_to:
@@ -168,9 +196,8 @@ class AzureBlobStorage(uploader.Upload):
     
     def _get_blob_url(self, blob_name):
         """Get public URL for blob with SAS token if needed"""
+        blob_client = self.container_client.get_blob_client(blob_name)
         try:
-            blob_client = self.container_client.get_blob_client(blob_name)
-            
             if self.use_emulator:
                 # For emulator, return direct URL
                 return blob_client.url
@@ -182,7 +209,7 @@ class AzureBlobStorage(uploader.Upload):
                     blob_name=blob_name,
                     account_key=self.account_key,
                     permission=BlobSasPermissions(read=True),
-                    expiry=datetime.utcnow() + timedelta(hours=1)
+                    expiry=datetime.now(timezone.utc) + timedelta(hours=1)
                 )
                 return f"{blob_client.url}?{sas_token}"
                 
@@ -192,16 +219,22 @@ class AzureBlobStorage(uploader.Upload):
     
     def _send_file_event(self, event_type, blob_name):
         """Send file event to Azure Event Hub"""
-        if not self.eventhub_connection_string:
+        # Skip entirely when Event Hub is not configured AND we are not in emulator
+        # mode (emulator mode uses a built-in default connection string as a fallback).
+        if not self.eventhub_connection_string and not self.use_emulator:
             return
             
         try:
             from azure.eventhub import EventHubProducerClient, EventData
             
-            # Use emulator connection string if in emulator mode
             if self.use_emulator:
-                # Azure Event Hub Emulator connection string format
-                connection_string = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+                # Use configured connection string or fall back to default emulator value
+                connection_string = self.eventhub_connection_string or (
+                    "Endpoint=sb://localhost:5672/;"
+                    "SharedAccessKeyName=RootManageSharedAccessKey;"
+                    "SharedAccessKey=SAS_KEY_VALUE;"
+                    "UseDevelopmentEmulator=true"
+                )
             else:
                 connection_string = self.eventhub_connection_string
             
@@ -214,7 +247,7 @@ class AzureBlobStorage(uploader.Upload):
                 'event_type': event_type,
                 'blob_name': blob_name,
                 'container_name': self.container_name,
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'source': 'ckan_native_cloud_storage'
             }
             
@@ -274,7 +307,7 @@ class AzureBlobStorage(uploader.Upload):
                                     overwrite=False,
                                     metadata={
                                         'original_path': rel_path,
-                                        'migration_time': datetime.utcnow().isoformat(),
+                                        'migration_time': datetime.now(timezone.utc).isoformat(),
                                         'migrated_from': 'local_storage'
                                     }
                                 )

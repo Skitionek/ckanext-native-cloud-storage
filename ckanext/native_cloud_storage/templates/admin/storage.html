@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+
+{% block subtitle %}{{ _('Azure Storage') }}{% endblock %}
+
+{% block primary_content_inner %}
+  <h2>{{ _('Azure Blob Storage Status') }}</h2>
+
+  {% if storage_status %}
+    <table class="table table-striped table-bordered table-condensed">
+      <tbody>
+        <tr>
+          <th>{{ _('Status') }}</th>
+          <td>
+            {% if storage_status.status == 'connected' %}
+              <span class="label label-success">{{ _('Connected') }}</span>
+            {% elif storage_status.status == 'disconnected' %}
+              <span class="label label-warning">{{ _('Disconnected') }}</span>
+            {% else %}
+              <span class="label label-danger">{{ _('Error') }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <th>{{ _('Storage Type') }}</th>
+          <td>{{ storage_status.storage_type }}</td>
+        </tr>
+        <tr>
+          <th>{{ _('Container') }}</th>
+          <td>{{ storage_status.container_name }}</td>
+        </tr>
+        <tr>
+          <th>{{ _('Emulator Mode') }}</th>
+          <td>{{ storage_status.emulator_mode }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if storage_status.error %}
+      <div class="alert alert-danger">
+        <strong>{{ _('Error') }}:</strong> {{ storage_status.error }}
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-warning">
+      {{ _('Unable to retrieve storage status.') }}
+    </div>
+  {% endif %}
+
+  <h2>{{ _('File Migration') }}</h2>
+  <p>{{ _('Migrate existing local files to Azure Blob Storage.') }}</p>
+
+  <form method="post" action="">
+    {# h.csrf_input() is available in CKAN >= 2.9; the guard keeps the template
+       compatible with older versions. #}
+    {{ h.csrf_input() if h.csrf_input is defined else '' }}
+    <div class="form-group">
+      <label>
+        <input type="checkbox" name="dry_run" value="1" checked="checked" />
+        {{ _('Dry run (preview only, no files will be moved)') }}
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">{{ _('Start Migration') }}</button>
+  </form>
+
+  {% if migration_results %}
+    <h3>{{ _('Migration Results') }}</h3>
+    <table class="table table-condensed">
+      <tbody>
+        <tr><th>{{ _('Files Processed') }}</th><td>{{ migration_results.processed }}</td></tr>
+        <tr><th>{{ _('Files Migrated') }}</th><td>{{ migration_results.migrated }}</td></tr>
+        <tr><th>{{ _('Errors') }}</th><td>{{ migration_results.errors }}</td></tr>
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

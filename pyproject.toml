@@ -22,3 +22,6 @@ Homepage = "https://github.com/Skitionek/ckanext-native-cloud-storage"
 [tool.setuptools]
 packages = ["ckanext.native_cloud_storage"]
 include-package-data = true
+
+[tool.pytest.ini_options]
+testpaths = ["ckanext/native_cloud_storage/tests"]
