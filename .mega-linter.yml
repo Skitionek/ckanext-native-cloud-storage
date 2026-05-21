@@ -1,0 +1,31 @@
+# MegaLinter configuration
+# https://megalinter.io/latest/configuration/
+
+# Apply auto-fixes for all supported linters
+APPLY_FIXES: all
+APPLY_FIXES_EVENT: pull_request
+APPLY_FIXES_MODE: pull_request
+
+# Reporters
+REPORTERS:
+  - GitHub
+  - SARIF
+  - Text
+
+# MegaLinter flavour: use the full image (no flavour restriction)
+# Disable suggestions for flavour optimization (keep CI simple)
+FLAVOR_SUGGESTIONS: false
+
+# Git-related settings
+VALIDATE_ALL_CODEBASE: false # only lint changed files on PRs
+
+# Disable spell-check for now (too many false positives in code)
+SPELL_CSPELL_DISABLE_ERRORS: true
+
+# Trivy: informational only (errors handled by CodeQL)
+REPOSITORY_TRIVY_DISABLE_ERRORS: true
+# Checkov findings are informational only (warnings); they do not block CI
+REPOSITORY_CHECKOV_DISABLE_ERRORS: true
+
+# Upload SARIF to GitHub Security tab (see lint.yml for the upload step)
+SARIF_REPORTER: true
