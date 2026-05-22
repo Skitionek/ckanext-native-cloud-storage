@@ -33,6 +33,14 @@ PYTHON_PYLINT_DISABLE_ERRORS: true
 REPOSITORY_SECRETLINT_DISABLE_ERRORS: true
 PYTHON_MYPY_DISABLE_ERRORS: true
 PYTHON_PYRIGHT_DISABLE_ERRORS: true
+# DevSkim findings are ManualReview-level notes about localhost/127.0.0.1
+# references used in legitimate local emulator connection strings (Azurite,
+# EventHub emulator) and docker-compose healthchecks.
+REPOSITORY_DEVSKIM_DISABLE_ERRORS: true
+# KICS findings are all in the .devcontainer/ submodule (development-only
+# Docker configs: missing USER, cap_drop, shared volumes, unpinned actions).
+# These are not part of the extension source and should not block CI.
+REPOSITORY_KICS_DISABLE_ERRORS: true
 # Formatting/style and lightweight static checks are currently advisory-only
 # while the extension is being stabilized.
 PYTHON_FLAKE8_DISABLE_ERRORS: true

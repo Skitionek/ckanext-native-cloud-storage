@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated file storage from Azure Blob Storage APIs to Azure Data Lake Storage Gen2 filesystem APIs while preserving CKAN uploader compatibility.
 - Switched primary file-event notification configuration to Azure Service Bus Queue settings, with Event Hub fallback for backward compatibility.
 - Raised the project Python baseline to 3.10 in package metadata and installation docs.
+- Marked DevSkim and KICS MegaLinter checks as non-blocking: DevSkim findings are ManualReview notes on legitimate local-emulator connection strings; KICS findings are all in the `.devcontainer/` development submodule.
 
 ### Fixed
 
