@@ -24,11 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migrated file storage from Azure Blob Storage APIs to Azure Data Lake Storage Gen2 filesystem APIs while preserving CKAN uploader compatibility.
 - Switched primary file-event notification configuration to Azure Service Bus Queue settings, with Event Hub fallback for backward compatibility.
-- Raised the project Python baseline to 3.10 in package metadata and installation docs. ([#pending](https://github.com/Skitionek/ckanext-native-cloud-storage/pulls))
+- Raised the project Python baseline to 3.10 in package metadata and installation docs.
 
 ### Fixed
 
 - Updated configuration examples, admin UI labels, and README terminology to match Data Lake Gen2 semantics (`file_system_name`) and queue-based event configuration.
-- Fixed Python lint issues by applying Black formatting, cleaning unused imports/variables, and adding repository Flake8 settings. ([#pending](https://github.com/Skitionek/ckanext-native-cloud-storage/pulls))
+- Fixed Python lint issues by applying Black formatting, cleaning unused imports/variables, and adding repository Flake8 settings.
 
 [Unreleased]: https://github.com/Skitionek/ckanext-native-cloud-storage
