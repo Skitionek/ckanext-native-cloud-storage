@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Redid the storage implementation around Azure Data Lake Gen2 client patterns inspired by `azure-data-lake-fs`, while keeping CKAN uploader interfaces compatible.
+- Refactored the storage implementation around Azure Data Lake Gen2 client patterns inspired by `azure-data-lake-fs`, while keeping CKAN uploader interfaces compatible.
 - Switched primary file-event publishing from Event Hub settings to Service Bus queue settings, with Event Hub fallback for backward compatibility.
 
 ### Fixed

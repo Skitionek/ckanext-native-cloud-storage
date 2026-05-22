@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from azure.storage.filedatalake import (
+    ContentSettings,
     DataLakeServiceClient,
     FileSasPermissions,
     generate_file_sas,
@@ -192,7 +193,9 @@ class AzureBlobStorage(_UploadBase):
             # Keep content type as a metadata fallback in case setting HTTP headers
             # is not supported by the target endpoint/emulator.
             try:
-                file_client.set_http_headers(content_settings={'content_type': content_type})
+                file_client.set_http_headers(
+                    content_settings=ContentSettings(content_type=content_type)
+                )
             except Exception:  # pragma: no cover - best-effort compatibility
                 pass
             
@@ -220,6 +223,8 @@ class AzureBlobStorage(_UploadBase):
     def _get_blob_url(self, blob_name):
         """Get URL for a file path with SAS token when possible."""
         file_path = blob_name.lstrip('/')
+        if not file_path or file_path.endswith('/'):
+            raise ValueError('Invalid file path for SAS URL generation')
         file_client = self.file_system_client.get_file_client(file_path)
         try:
             if self.use_emulator:
@@ -230,7 +235,7 @@ class AzureBlobStorage(_UploadBase):
                 raise ValueError('Invalid file path for SAS URL generation')
 
             expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-            permission = FileSasPermissions.from_string("r")
+            permission = FileSasPermissions(read=True)
 
             if self.account_key:
                 sas_token = generate_file_sas(
