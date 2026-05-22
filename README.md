@@ -1,12 +1,12 @@
 # ckanext-native-cloud-storage
 
-A CKAN extension for native cloud storage integration with Azure Blob Storage and Azure Event Hub support. This extension provides seamless file storage in Azure cloud with development support for Azure Storage Emulator (Azurite) and Event Hub Emulator.
+A CKAN extension for native cloud storage integration with Azure Data Lake Storage Gen2 and Azure Service Bus Queue support. This extension provides seamless file storage in Azure cloud with development support for Azure Storage Emulator (Azurite) and Service Bus Queue Emulator.
 
 ## Features
 
-- **Azure Blob Storage Integration**: Store CKAN files directly in Azure Blob Storage
-- **Azure Event Hub Integration**: Send file operation events to Azure Event Hub
-- **Emulator Support**: Development support with Azure Storage Emulator (Azurite) and Event Hub Emulator
+- **Azure Data Lake Storage Gen2 Integration**: Store CKAN files directly in Azure Data Lake Storage Gen2
+- **Azure Service Bus Queue Integration**: Send file operation events to Azure Service Bus Queue
+- **Emulator Support**: Development support with Azure Storage Emulator (Azurite) and Service Bus Queue Emulator
 - **File Migration**: Migrate existing local files to Azure storage
 - **Secure Access**: SAS token generation for secure file access
 - **Admin Interface**: Storage status monitoring and migration tools
@@ -16,7 +16,7 @@ A CKAN extension for native cloud storage integration with Azure Blob Storage an
 - CKAN >= 2.9
 - Python >= 3.7
 - Azure Storage Account (production) or Azure Storage Emulator (development)
-- Azure Event Hub (optional, for file events)
+- Azure Service Bus Queue (optional, for file events)
 
 ## Installation
 
@@ -52,22 +52,22 @@ Add the following settings to your CKAN configuration file (`ckan.ini`):
 # Azure Storage Account Configuration
 ckanext.native_cloud_storage.azure.account_name = your_storage_account
 ckanext.native_cloud_storage.azure.account_key = your_storage_key
-ckanext.native_cloud_storage.azure.container_name = ckan-storage
+ckanext.native_cloud_storage.azure.file_system_name = ckan-storage
 
-# Optional: Azure Event Hub for file events
-ckanext.native_cloud_storage.azure.eventhub_connection_string = Endpoint=sb://...
-ckanext.native_cloud_storage.azure.eventhub_name = ckan-file-events
+# Optional: Azure Service Bus Queue for file events
+ckanext.native_cloud_storage.azure.servicebus_connection_string = Endpoint=sb://...
+ckanext.native_cloud_storage.azure.servicebus_queue_name = ckan-file-events
 ```
 
 ### Development Configuration (with Emulators)
 
-For development, you can use Azure Storage Emulator and Event Hub Emulator:
+For development, you can use Azure Storage Emulator and Service Bus Queue Emulator:
 
 ```ini
 # Use emulators for development
 ckanext.native_cloud_storage.azure.use_emulator = true
-ckanext.native_cloud_storage.azure.container_name = ckan-storage
-ckanext.native_cloud_storage.azure.eventhub_name = ckan-file-events
+ckanext.native_cloud_storage.azure.file_system_name = ckan-storage
+ckanext.native_cloud_storage.azure.servicebus_queue_name = ckan-file-events
 ```
 
 ## Development Setup with Emulators
@@ -84,7 +84,7 @@ This extension includes Docker Compose setup for running Azure emulators locally
    # Check Azurite (Storage Emulator)
    curl http://localhost:10000/devstoreaccount1
    
-   # Check Event Hub Emulator
+   # Check Service Bus Queue Emulator
    docker logs ckan-eventhub-emulator
    ```
 
@@ -106,7 +106,7 @@ npm install -g azurite
 azurite --silent --location /tmp/azurite --debug /tmp/azurite/debug.log
 ```
 
-**Azure Event Hub Emulator:**
+**Azure Service Bus Queue Emulator (Event Hubs emulator compatible mode):**
 ```bash
 docker run -it --rm -p 5672:5672 mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest
 ```
@@ -115,12 +115,12 @@ docker run -it --rm -p 5672:5672 mcr.microsoft.com/azure-messaging/eventhubs-emu
 
 ### File Uploads
 
-Once configured, all CKAN file uploads will automatically use Azure Blob Storage:
+Once configured, all CKAN file uploads will automatically use Azure Data Lake Storage Gen2:
 
 1. Upload dataset resources through the web interface
-2. Files are stored in Azure Blob Storage
-3. File URLs point to Azure Blob Storage (with SAS tokens for security)
-4. File events are sent to Event Hub (if configured)
+2. Files are stored in Azure Data Lake Storage Gen2
+3. File URLs point to Azure Data Lake Storage Gen2 (with SAS tokens for security)
+4. File events are sent to Service Bus Queue (if configured)
 
 ### Admin Actions
 
@@ -166,9 +166,9 @@ ckan -c /path/to/ckan.ini native-cloud-storage migrate
 | `ckanext.native_cloud_storage.azure.account_name` | Azure Storage Account name | - | Yes (production) |
 | `ckanext.native_cloud_storage.azure.account_key` | Azure Storage Account key | - | Yes (production) |
 | `ckanext.native_cloud_storage.azure.connection_string` | Full connection string | - | Alternative to name/key |
-| `ckanext.native_cloud_storage.azure.container_name` | Storage container name | `ckan-storage` | No |
-| `ckanext.native_cloud_storage.azure.eventhub_connection_string` | Event Hub connection string | - | No |
-| `ckanext.native_cloud_storage.azure.eventhub_name` | Event Hub name | `ckan-file-events` | No |
+| `ckanext.native_cloud_storage.azure.file_system_name` | Storage file system name | `ckan-storage` | No |
+| `ckanext.native_cloud_storage.azure.servicebus_connection_string` | Service Bus Queue connection string | - | No |
+| `ckanext.native_cloud_storage.azure.servicebus_queue_name` | Service Bus Queue name | `ckan-file-events` | No |
 
 ## Testing
 
@@ -190,7 +190,7 @@ pytest --cov=ckanext.native_cloud_storage ckanext/native_cloud_storage/tests/
 The extension consists of:
 
 - **Plugin (`plugin.py`)**: Main CKAN plugin implementing IUploader and IActions
-- **Storage (`storage.py`)**: Azure Blob Storage implementation with Event Hub integration
+- **Storage (`storage.py`)**: Azure Data Lake Storage Gen2 implementation with Service Bus Queue integration
 - **Tests**: Comprehensive test suite with mocking for Azure services
 - **Docker Compose**: Development environment with emulators
 
@@ -198,14 +198,14 @@ The extension consists of:
 
 1. User uploads file via CKAN interface
 2. Extension intercepts upload via IUploader interface
-3. File is uploaded to Azure Blob Storage
+3. File is uploaded to Azure Data Lake Storage Gen2
 4. SAS token is generated for secure access
-5. File event is sent to Event Hub (optional)
-6. CKAN stores Azure Blob URL as file location
+5. File event is sent to Service Bus Queue (optional)
+6. CKAN stores Azure Data Lake URL as file location
 
-### Event Hub Integration
+### Service Bus Queue Integration
 
-File operations generate events sent to Azure Event Hub:
+File operations generate events sent to Azure Service Bus Queue:
 - `upload`: When a file is uploaded
 - `delete`: When a file is deleted
 - `migrate`: When files are migrated from local storage
@@ -233,11 +233,11 @@ Event payload includes:
 **Permission Errors:**
 - Verify Azure Storage Account permissions
 - Check SAS token generation settings
-- Ensure container exists and is accessible
+- Ensure file system exists and is accessible
 
 **File Upload Issues:**
 - Check CKAN file upload limits
-- Verify container permissions
+- Verify file system permissions
 - Review Azure Storage logs
 
 ### Debug Mode
@@ -267,4 +267,4 @@ MIT License - see LICENSE file for details.
 
 - GitHub Issues: [Report bugs and feature requests](https://github.com/Skitionek/ckanext-native-cloud-storage/issues)
 - Documentation: [CKAN Extensions Guide](https://docs.ckan.org/en/latest/extensions/)
-- Azure Documentation: [Azure Storage](https://docs.microsoft.com/azure/storage/) | [Azure Event Hubs](https://docs.microsoft.com/azure/event-hubs/)
+- Azure Documentation: [Azure Storage](https://learn.microsoft.com/azure/storage/) | [Azure Service Bus Queues](https://learn.microsoft.com/azure/service-bus-messaging/)

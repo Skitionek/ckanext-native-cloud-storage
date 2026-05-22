@@ -3,7 +3,7 @@
 # Enable the plugin
 ckan.plugins = ... native_cloud_storage
 
-# Azure Blob Storage Configuration
+# Azure Data Lake Storage Gen2 Configuration
 # Set to true to use Azure Storage Emulator (Azurite) for development
 ckanext.native_cloud_storage.azure.use_emulator = false
 
@@ -15,14 +15,14 @@ ckanext.native_cloud_storage.azure.account_key = your_storage_key
 # ckanext.native_cloud_storage.azure.connection_string = DefaultEndpointsProtocol=https;AccountName=your_account;AccountKey=your_key;EndpointSuffix=core.windows.net
 
 # Container name for storing CKAN files
-ckanext.native_cloud_storage.azure.container_name = ckan-storage
+ckanext.native_cloud_storage.azure.file_system_name = ckan-storage
 
-# Azure Event Hub Configuration (optional)
-# Event Hub for file operation notifications
-ckanext.native_cloud_storage.azure.eventhub_connection_string = Endpoint=sb://your_namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your_key
-ckanext.native_cloud_storage.azure.eventhub_name = ckan-file-events
+# Azure Service Bus Queue Configuration (optional)
+# Service Bus Queue for file operation notifications
+ckanext.native_cloud_storage.azure.servicebus_connection_string = Endpoint=sb://your_namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your_key
+ckanext.native_cloud_storage.azure.servicebus_queue_name = ckan-file-events
 
 # Development Settings (for emulator)
 # When use_emulator is true, these settings are automatically configured:
 # - Azurite connection: http://127.0.0.1:10000/devstoreaccount1
-# - Event Hub emulator: sb://localhost:5672/
+# - Service Bus Queue emulator: sb://localhost:5672/

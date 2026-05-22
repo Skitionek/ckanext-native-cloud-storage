@@ -1,10 +1,14 @@
 import logging
 import os
 import mimetypes
+import json
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
 
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, generate_blob_sas, BlobSasPermissions
+from azure.storage.filedatalake import (
+    DataLakeServiceClient,
+    FileSasPermissions,
+    generate_file_sas,
+)
 from azure.core.exceptions import ResourceNotFoundError, AzureError
 from azure.identity import DefaultAzureCredential
 
@@ -45,7 +49,9 @@ log = logging.getLogger(__name__)
 
 class AzureBlobStorage(_UploadBase):
     """
-    Azure Blob Storage implementation for CKAN file uploads
+    Azure Data Lake Gen2 implementation for CKAN file uploads.
+
+    The class name is kept for CKAN/plugin compatibility.
     """
     
     def __init__(self, upload_to='', old_filename=None):
@@ -57,73 +63,90 @@ class AzureBlobStorage(_UploadBase):
         """
         super().__init__(upload_to, old_filename)
         
-        # Azure Storage configuration
+        # Azure Data Lake configuration
         self.account_name = config.get('ckanext.native_cloud_storage.azure.account_name', '')
         self.account_key = config.get('ckanext.native_cloud_storage.azure.account_key', '')
         self.connection_string = config.get('ckanext.native_cloud_storage.azure.connection_string', '')
-        self.container_name = config.get('ckanext.native_cloud_storage.azure.container_name', 'ckan-storage')
+        configured_fs = config.get('ckanext.native_cloud_storage.azure.file_system_name', '')
+        configured_container = config.get('ckanext.native_cloud_storage.azure.container_name', '')
+        self.file_system_name = configured_fs or configured_container or 'ckan-storage'
+        # Keep legacy attribute for backward compatibility.
+        self.container_name = self.file_system_name
         self.use_emulator = toolkit.asbool(config.get('ckanext.native_cloud_storage.azure.use_emulator', False))
-        
-        # Event Hub configuration (for file events)
+
+        # Service Bus configuration (preferred, based on azure-data-lake-fs).
+        self.servicebus_connection_string = config.get('ckanext.native_cloud_storage.azure.servicebus_connection_string', '')
+        self.servicebus_queue_name = config.get('ckanext.native_cloud_storage.azure.servicebus_queue_name', 'ckan-file-events')
+
+        # Legacy Event Hub configuration for backward compatibility.
         self.eventhub_connection_string = config.get('ckanext.native_cloud_storage.azure.eventhub_connection_string', '')
         self.eventhub_name = config.get('ckanext.native_cloud_storage.azure.eventhub_name', 'ckan-file-events')
+
+        self._service_client = None
+        self._file_system_client = None
         
-        self._blob_service_client = None
-        self._container_client = None
-        
+    @property
+    def data_lake_service_client(self):
+        """Lazy initialization of Azure Data Lake Service Client."""
+        if self._service_client is None:
+            self._service_client = self._create_data_lake_service_client()
+        return self._service_client
+    
+    @property
+    def file_system_client(self):
+        """Lazy initialization of Azure Data Lake FileSystem client."""
+        if self._file_system_client is None:
+            self._file_system_client = self.data_lake_service_client.get_file_system_client(
+                file_system=self.file_system_name
+            )
+            self._ensure_file_system_exists()
+        return self._file_system_client
+    
     @property
     def blob_service_client(self):
-        """Lazy initialization of Azure Blob Service Client"""
-        if self._blob_service_client is None:
-            self._blob_service_client = self._create_blob_service_client()
-        return self._blob_service_client
-    
+        """Compatibility alias for older tests/callers."""
+        return self.data_lake_service_client
+
     @property
     def container_client(self):
-        """Lazy initialization of Azure Container Client"""
-        if self._container_client is None:
-            self._container_client = self.blob_service_client.get_container_client(self.container_name)
-            self._ensure_container_exists()
-        return self._container_client
-    
-    def _create_blob_service_client(self):
-        """Create Azure Blob Service Client with appropriate authentication"""
+        """Compatibility alias for older tests/callers."""
+        return self.file_system_client
+
+    def _create_data_lake_service_client(self):
+        """Create Azure Data Lake Service Client with appropriate authentication."""
         try:
             if self.use_emulator:
-                # Use development storage emulator
+                # Use development storage emulator (Azurite).
                 connection_string = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
                 log.info("Using Azure Storage Emulator")
-                return BlobServiceClient.from_connection_string(connection_string)
+                return DataLakeServiceClient.from_connection_string(connection_string)
             elif self.connection_string:
-                # Use connection string
-                return BlobServiceClient.from_connection_string(self.connection_string)
+                return DataLakeServiceClient.from_connection_string(self.connection_string)
             elif self.account_name and self.account_key:
-                # Use account name and key
-                return BlobServiceClient(
-                    account_url=f"https://{self.account_name}.blob.core.windows.net",
+                return DataLakeServiceClient(
+                    account_url=f"https://{self.account_name}.dfs.core.windows.net",
                     credential=self.account_key
                 )
             elif self.account_name:
-                # Use managed identity / default credential
                 credential = DefaultAzureCredential()
-                return BlobServiceClient(
-                    account_url=f"https://{self.account_name}.blob.core.windows.net",
+                return DataLakeServiceClient(
+                    account_url=f"https://{self.account_name}.dfs.core.windows.net",
                     credential=credential
                 )
             else:
                 raise ValueError("Azure Storage configuration is incomplete. Please provide either connection_string, account_name with account_key, or account_name for managed identity.")
                 
         except Exception as e:
-            log.error(f"Failed to create Azure Blob Service Client: {e}")
+            log.error(f"Failed to create Azure Data Lake Service Client: {e}")
             raise
     
-    def _ensure_container_exists(self):
-        """Ensure the storage container exists"""
+    def _ensure_file_system_exists(self):
+        """Ensure the target file system exists."""
         try:
-            self.container_client.get_container_properties()
+            self.file_system_client.get_file_system_properties()
         except ResourceNotFoundError:
-            log.info(f"Creating container: {self.container_name}")
-            self.container_client.create_container()
+            log.info(f"Creating file system: {self.file_system_name}")
+            self.file_system_client.create_file_system()
     
     def is_emulator_mode(self):
         """Check if running in emulator mode"""
@@ -132,37 +155,32 @@ class AzureBlobStorage(_UploadBase):
     def test_connection(self):
         """Test Azure Storage connection"""
         try:
-            self.container_client.get_container_properties()
+            self.file_system_client.get_file_system_properties()
             return True
         except Exception as e:
             log.error(f"Azure Storage connection test failed: {e}")
             return False
     
     def upload(self, max_size=2):
-        """Upload file to Azure Blob Storage"""
+        """Upload file to Azure Data Lake Storage Gen2."""
         if self.filename is None:
             return
             
         try:
-            # Generate blob name
-            blob_name = self._generate_blob_name()
+            # Generate path
+            file_path = self._generate_blob_name()
             
-            # Get file content
             if hasattr(self.upload_field_storage, 'file'):
                 content = self.upload_field_storage.file.read()
                 self.upload_field_storage.file.seek(0)
             else:
                 content = self.upload_field_storage.read()
-            
-            # Detect content type
+
             content_type = mimetypes.guess_type(self.filename)[0] or 'application/octet-stream'
             
-            # Upload to Azure Blob Storage
-            blob_client = self.container_client.get_blob_client(blob_name)
-            blob_client.upload_blob(
-                content,
-                blob_type="BlockBlob",
-                content_settings={'content_type': content_type},
+            file_client = self.file_system_client.get_file_client(file_path)
+            file_client.upload_data(
+                data=content,
                 overwrite=True,
                 metadata={
                     'original_filename': self.filename,
@@ -170,18 +188,23 @@ class AzureBlobStorage(_UploadBase):
                     'ckan_resource': 'true'
                 }
             )
+
+            # Keep content type as a metadata fallback in case setting HTTP headers
+            # is not supported by the target endpoint/emulator.
+            try:
+                file_client.set_http_headers(content_settings={'content_type': content_type})
+            except Exception:  # pragma: no cover - best-effort compatibility
+                pass
             
-            # Store the blob URL
-            self.filename = blob_name
-            self.url = self._get_blob_url(blob_name)
+            self.filename = file_path
+            self.url = self._get_blob_url(file_path)
             
-            log.info(f"File uploaded successfully: {blob_name}")
+            log.info(f"File uploaded successfully: {file_path}")
             
-            # Send event notification if Event Hub is configured
-            self._send_file_event('upload', blob_name)
+            self._send_file_event('upload', file_path)
             
         except Exception as e:
-            log.error(f"Failed to upload file to Azure Blob Storage: {e}")
+            log.error(f"Failed to upload file to Azure Data Lake: {e}")
             raise
     
     def _generate_blob_name(self):
@@ -195,40 +218,91 @@ class AzureBlobStorage(_UploadBase):
             return f"{timestamp}_{safe_filename}"
     
     def _get_blob_url(self, blob_name):
-        """Get public URL for blob with SAS token if needed"""
-        blob_client = self.container_client.get_blob_client(blob_name)
+        """Get URL for a file path with SAS token when possible."""
+        file_path = blob_name.lstrip('/')
+        file_client = self.file_system_client.get_file_client(file_path)
         try:
             if self.use_emulator:
-                # For emulator, return direct URL
-                return blob_client.url
-            else:
-                # Generate SAS token for secure access
-                sas_token = generate_blob_sas(
+                return file_client.url
+
+            directory_name, _, file_name = file_path.rpartition('/')
+            if not file_name:
+                raise ValueError('Invalid file path for SAS URL generation')
+
+            expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+            permission = FileSasPermissions.from_string("r")
+
+            if self.account_key:
+                sas_token = generate_file_sas(
                     account_name=self.account_name,
-                    container_name=self.container_name,
-                    blob_name=blob_name,
-                    account_key=self.account_key,
-                    permission=BlobSasPermissions(read=True),
-                    expiry=datetime.now(timezone.utc) + timedelta(hours=1)
+                    file_system_name=self.file_system_name,
+                    directory_name=directory_name,
+                    file_name=file_name,
+                    credential=self.account_key,
+                    permission=permission,
+                    expiry=expiry,
                 )
-                return f"{blob_client.url}?{sas_token}"
+            else:
+                start = datetime.now(timezone.utc) - timedelta(minutes=5)
+                user_delegation_key = self.data_lake_service_client.get_user_delegation_key(
+                    key_start_time=start,
+                    key_expiry_time=expiry,
+                )
+                sas_token = generate_file_sas(
+                    account_name=self.account_name,
+                    file_system_name=self.file_system_name,
+                    directory_name=directory_name,
+                    file_name=file_name,
+                    credential=user_delegation_key,
+                    permission=permission,
+                    expiry=expiry,
+                )
+
+            return f"{file_client.url}?{sas_token}"
                 
         except Exception as e:
-            log.error(f"Failed to generate blob URL: {e}")
-            return blob_client.url  # Fallback to direct URL
+            log.error(f"Failed to generate file URL: {e}")
+            return file_client.url
     
     def _send_file_event(self, event_type, blob_name):
-        """Send file event to Azure Event Hub"""
-        # Skip entirely when Event Hub is not configured AND we are not in emulator
-        # mode (emulator mode uses a built-in default connection string as a fallback).
-        if not self.eventhub_connection_string and not self.use_emulator:
+        """Send file event to Service Bus queue, fallback to Event Hub."""
+        event_data = {
+            'event_type': event_type,
+            'blob_name': blob_name,
+            'container_name': self.file_system_name,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'source': 'ckan_native_cloud_storage'
+        }
+
+        if self.servicebus_connection_string:
+            self._send_servicebus_event(event_data)
             return
-            
+
+        if self.eventhub_connection_string or self.use_emulator:
+            self._send_eventhub_event(event_data)
+
+    def _send_servicebus_event(self, event_data):
+        """Send file event to Azure Service Bus queue."""
         try:
-            from azure.eventhub import EventHubProducerClient, EventData
-            
+            from azure.servicebus import ServiceBusClient, ServiceBusMessage
+
+            with ServiceBusClient.from_connection_string(self.servicebus_connection_string) as client:
+                with client.get_queue_sender(queue_name=self.servicebus_queue_name) as sender:
+                    sender.send_messages(ServiceBusMessage(json.dumps(event_data)))
+
+            log.info(
+                f"File event sent to Service Bus queue: "
+                f"{event_data['event_type']} - {event_data['blob_name']}"
+            )
+        except Exception as e:
+            log.warning(f"Failed to send file event to Service Bus: {e}")
+
+    def _send_eventhub_event(self, event_data):
+        """Legacy Event Hub publisher for backward compatibility."""
+        try:
+            from azure.eventhub import EventData, EventHubProducerClient
+
             if self.use_emulator:
-                # Use configured connection string or fall back to default emulator value
                 connection_string = self.eventhub_connection_string or (
                     "Endpoint=sb://localhost:5672/;"
                     "SharedAccessKeyName=RootManageSharedAccessKey;"
@@ -237,27 +311,19 @@ class AzureBlobStorage(_UploadBase):
                 )
             else:
                 connection_string = self.eventhub_connection_string
-            
+
             producer = EventHubProducerClient.from_connection_string(
                 conn_str=connection_string,
                 eventhub_name=self.eventhub_name
             )
-            
-            event_data = {
-                'event_type': event_type,
-                'blob_name': blob_name,
-                'container_name': self.container_name,
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'source': 'ckan_native_cloud_storage'
-            }
-            
             with producer:
                 event_data_batch = producer.create_batch()
-                event_data_batch.add(EventData(str(event_data)))
+                event_data_batch.add(EventData(json.dumps(event_data)))
                 producer.send_batch(event_data_batch)
-                
-            log.info(f"File event sent to Event Hub: {event_type} - {blob_name}")
-            
+            log.info(
+                f"File event sent to Event Hub: "
+                f"{event_data['event_type']} - {event_data['blob_name']}"
+            )
         except Exception as e:
             log.warning(f"Failed to send file event to Event Hub: {e}")
     
@@ -291,19 +357,17 @@ class AzureBlobStorage(_UploadBase):
                             # Upload file to Azure
                             with open(file_path, 'rb') as f:
                                 blob_name = f"migrated/{rel_path}"
-                                blob_client = self.container_client.get_blob_client(blob_name)
+                                file_client = self.file_system_client.get_file_client(blob_name)
                                 
-                                # Check if blob already exists
                                 try:
-                                    blob_client.get_blob_properties()
+                                    file_client.get_file_properties()
                                     log.info(f"Blob already exists, skipping: {blob_name}")
                                     continue
                                 except ResourceNotFoundError:
                                     pass
                                 
-                                blob_client.upload_blob(
-                                    f,
-                                    blob_type="BlockBlob",
+                                file_client.upload_data(
+                                    data=f.read(),
                                     overwrite=False,
                                     metadata={
                                         'original_path': rel_path,
