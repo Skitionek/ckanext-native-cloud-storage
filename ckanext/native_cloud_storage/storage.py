@@ -144,7 +144,11 @@ class AzureBlobStorage(_UploadBase):
         try:
             if self.use_emulator:
                 # Use development storage emulator (Azurite).
-                connection_string = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+                connection_string = (
+                    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
+                    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+                    "K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+                )
                 log.info("Using Azure Storage Emulator")
                 return DataLakeServiceClient.from_connection_string(connection_string)
             elif self.connection_string:
@@ -164,7 +168,9 @@ class AzureBlobStorage(_UploadBase):
                 )
             else:
                 raise ValueError(
-                    "Azure Storage configuration is incomplete. Please provide either connection_string, account_name with account_key, or account_name for managed identity."
+                    "Azure Storage configuration is incomplete. Please provide either "
+                    "connection_string, account_name with account_key, or account_name "
+                    "for managed identity."
                 )
 
         except Exception as e:

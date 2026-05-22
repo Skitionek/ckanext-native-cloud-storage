@@ -36,7 +36,7 @@ class TestAzureBlobStorage:
         )
 
         storage = AzureBlobStorage()
-        client = storage.blob_service_client
+        storage.blob_service_client
 
         mock_service_client.from_connection_string.assert_called_once()
 
