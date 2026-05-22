@@ -90,26 +90,26 @@ python scripts/validate_setup.py
 
 ### Required Settings
 
-| Setting | Description | Example |
-|---------|-------------|---------|
+| Setting        | Description                | Example                                     |
+|----------------|----------------------------|---------------------------------------------|
 | `ckan.plugins` | Add `native_cloud_storage` | `datastore datapusher native_cloud_storage` |
 
 ### Azure Storage Settings
 
-| Setting | Description | Required | Default |
-|---------|-------------|----------|---------|
-| `ckanext.native_cloud_storage.azure.use_emulator` | Use emulator for development | No | `false` |
-| `ckanext.native_cloud_storage.azure.account_name` | Azure Storage account name | Yes (prod) | - |
-| `ckanext.native_cloud_storage.azure.account_key` | Azure Storage account key | Yes (prod) | - |
-| `ckanext.native_cloud_storage.azure.connection_string` | Full connection string | Alternative | - |
-| `ckanext.native_cloud_storage.azure.container_name` | Container for CKAN files | No | `ckan-storage` |
+| Setting                                                | Description                  | Required    | Default        |
+|--------------------------------------------------------|------------------------------|-------------|----------------|
+| `ckanext.native_cloud_storage.azure.use_emulator`      | Use emulator for development | No          | `false`        |
+| `ckanext.native_cloud_storage.azure.account_name`      | Azure Storage account name   | Yes (prod)  | -              |
+| `ckanext.native_cloud_storage.azure.account_key`       | Azure Storage account key    | Yes (prod)  | -              |
+| `ckanext.native_cloud_storage.azure.connection_string` | Full connection string       | Alternative | -              |
+| `ckanext.native_cloud_storage.azure.container_name`    | Container for CKAN files     | No          | `ckan-storage` |
 
 ### Event Hub Settings (Optional)
 
-| Setting | Description | Required | Default |
-|---------|-------------|----------|---------|
-| `ckanext.native_cloud_storage.azure.eventhub_connection_string` | Event Hub connection string | No | - |
-| `ckanext.native_cloud_storage.azure.eventhub_name` | Event Hub name | No | `ckan-file-events` |
+| Setting                                                         | Description                 | Required | Default            |
+|-----------------------------------------------------------------|-----------------------------|----------|--------------------|
+| `ckanext.native_cloud_storage.azure.eventhub_connection_string` | Event Hub connection string | No       | -                  |
+| `ckanext.native_cloud_storage.azure.eventhub_name`              | Event Hub name              | No       | `ckan-file-events` |
 
 ## Testing the Installation
 
@@ -182,5 +182,5 @@ qualname = ckanext.native_cloud_storage
 
 - Check the [README.md](README.md) for detailed documentation
 - Review the [GitHub Issues](https://github.com/Skitionek/ckanext-native-cloud-storage/issues)
-- Consult CKAN documentation: https://docs.ckan.org/
-- Azure Storage documentation: https://docs.microsoft.com/azure/storage/
+- Consult CKAN documentation: <https://docs.ckan.org/>
+- Azure Storage documentation: <https://docs.microsoft.com/azure/storage/>
