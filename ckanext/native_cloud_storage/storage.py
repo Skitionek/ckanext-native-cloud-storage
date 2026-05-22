@@ -197,6 +197,7 @@ class AzureBlobStorage(_UploadBase):
                     content_settings=ContentSettings(content_type=content_type)
                 )
             except (TypeError, AzureError):  # pragma: no cover - best-effort compatibility
+                log.debug("Skipping Data Lake content-type header update for uploaded file.")
                 pass
             
             self.filename = file_path
@@ -273,7 +274,8 @@ class AzureBlobStorage(_UploadBase):
         """Send file event to Service Bus queue, fallback to Event Hub."""
         event_data = {
             'event_type': event_type,
-            'blob_name': file_path,
+            'file_path': file_path,
+            'blob_name': file_path,  # Legacy key kept for compatibility.
             'container_name': self.file_system_name,
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'source': 'ckan_native_cloud_storage'
