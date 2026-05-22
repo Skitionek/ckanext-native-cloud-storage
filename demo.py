@@ -6,8 +6,8 @@ This script demonstrates the extension functionality without requiring
 a full CKAN installation.
 """
 
-import sys
 import importlib
+import sys
 from unittest.mock import patch
 
 

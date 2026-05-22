@@ -2,8 +2,8 @@
 CLI commands for native cloud storage management
 """
 
-import click
 import ckan.plugins.toolkit as toolkit
+import click
 from ckan.cli import error_shout
 
 

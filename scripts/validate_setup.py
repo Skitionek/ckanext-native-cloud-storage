@@ -3,8 +3,9 @@
 Validation script for CKAN Native Cloud Storage extension setup
 """
 
-import sys
 import subprocess
+import sys
+
 import requests
 
 
