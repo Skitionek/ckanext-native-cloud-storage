@@ -24,7 +24,7 @@ A CKAN extension for native cloud storage integration with Azure Data Lake Stora
    ```bash
    pip install ckanext-native-cloud-storage
    ```
-   
+
    Or from source:
    ```bash
    git clone https://github.com/Skitionek/ckanext-native-cloud-storage.git
@@ -160,15 +160,15 @@ ckan -c /path/to/ckan.ini native-cloud-storage migrate
 
 ## Configuration Options
 
-| Setting | Description | Default | Required |
-|---------|-------------|---------|----------|
-| `ckanext.native_cloud_storage.azure.use_emulator` | Use Azure Storage Emulator | `false` | No |
-| `ckanext.native_cloud_storage.azure.account_name` | Azure Storage Account name | - | Yes (production) |
-| `ckanext.native_cloud_storage.azure.account_key` | Azure Storage Account key | - | Yes (production) |
-| `ckanext.native_cloud_storage.azure.connection_string` | Full connection string | - | Alternative to name/key |
-| `ckanext.native_cloud_storage.azure.file_system_name` | Storage file system name | `ckan-storage` | No |
-| `ckanext.native_cloud_storage.azure.servicebus_connection_string` | Service Bus Queue connection string | - | No |
-| `ckanext.native_cloud_storage.azure.servicebus_queue_name` | Service Bus Queue name | `ckan-file-events` | No |
+| Setting                                                           | Description                         | Default            | Required                |
+|-------------------------------------------------------------------|-------------------------------------|--------------------|-------------------------|
+| `ckanext.native_cloud_storage.azure.use_emulator`                 | Use Azure Storage Emulator          | `false`            | No                      |
+| `ckanext.native_cloud_storage.azure.account_name`                 | Azure Storage Account name          | -                  | Yes (production)        |
+| `ckanext.native_cloud_storage.azure.account_key`                  | Azure Storage Account key           | -                  | Yes (production)        |
+| `ckanext.native_cloud_storage.azure.connection_string`            | Full connection string              | -                  | Alternative to name/key |
+| `ckanext.native_cloud_storage.azure.file_system_name`             | Storage file system name            | `ckan-storage`     | No                      |
+| `ckanext.native_cloud_storage.azure.servicebus_connection_string` | Service Bus Queue connection string | -                  | No                      |
+| `ckanext.native_cloud_storage.azure.servicebus_queue_name`        | Service Bus Queue name              | `ckan-file-events` | No                      |
 
 ## Testing
 
