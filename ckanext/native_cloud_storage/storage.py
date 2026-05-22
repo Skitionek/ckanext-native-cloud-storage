@@ -198,7 +198,6 @@ class AzureBlobStorage(_UploadBase):
                 )
             except (TypeError, AzureError):  # pragma: no cover - best-effort compatibility
                 log.debug("Skipping Data Lake content-type header update for uploaded file.")
-                pass
             
             self.filename = file_path
             self.url = self._get_blob_url(file_path)
