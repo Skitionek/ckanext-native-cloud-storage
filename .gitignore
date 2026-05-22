@@ -55,3 +55,6 @@ docker-compose.override.yml
 # CKAN
 ckan.ini
 who.ini
+
+# MegaLinter reports
+megalinter-reports/
