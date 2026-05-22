@@ -14,7 +14,7 @@ A CKAN extension for native cloud storage integration with Azure Data Lake Stora
 ## Requirements
 
 - CKAN >= 2.9
-- Python >= 3.7
+- Python >= 3.10
 - Azure Storage Account (production) or Azure Storage Emulator (development)
 - Azure Service Bus Queue (optional, for file events)
 

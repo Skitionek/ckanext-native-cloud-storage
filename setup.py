@@ -14,9 +14,7 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     keywords="CKAN Azure Cloud Storage",
     author="CKAN Extension Developer",
@@ -26,6 +24,7 @@ setup(
     packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
     namespace_packages=["ckanext"],
     include_package_data=True,
+    python_requires=">=3.10",
     zip_safe=False,
     install_requires=[
         "azure-storage-file-datalake>=12.19.0",

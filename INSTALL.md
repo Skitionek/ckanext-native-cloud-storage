@@ -5,7 +5,7 @@ This guide provides step-by-step instructions for installing and configuring the
 ## Prerequisites
 
 - CKAN 2.9+ installed and running
-- Python 3.7+
+- Python 3.10+
 - Docker (for development with emulators)
 - Azure Storage Account (for production) or Azure Storage Emulator (for development)
 
