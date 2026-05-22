@@ -19,9 +19,12 @@ def demo_basic_functionality():
     # Test 1: Azure SDK imports
     print("\n1. Testing Azure SDK imports...")
     try:
-        importlib.import_module("azure.storage.blob")
-        importlib.import_module("azure.eventhub")
-        importlib.import_module("azure.identity")
+        blob_module = importlib.import_module("azure.storage.blob")
+        eventhub_module = importlib.import_module("azure.eventhub")
+        identity_module = importlib.import_module("azure.identity")
+
+        if not (blob_module and eventhub_module and identity_module):
+            raise ImportError("Azure SDK modules failed to import")
 
         print("   ✓ Azure SDK packages imported successfully")
     except ImportError as e:
@@ -31,8 +34,11 @@ def demo_basic_functionality():
     # Test 2: Extension module structure
     print("\n2. Testing extension module structure...")
     try:
-        importlib.import_module("ckanext.native_cloud_storage.plugin")
-        importlib.import_module("ckanext.native_cloud_storage.storage")
+        plugin_module = importlib.import_module("ckanext.native_cloud_storage.plugin")
+        storage_module = importlib.import_module("ckanext.native_cloud_storage.storage")
+
+        if not (plugin_module and storage_module):
+            raise ImportError("Extension modules failed to import")
 
         print("   ✓ Extension modules imported successfully")
     except ImportError as e:
