@@ -8,8 +8,8 @@ class TestBasicFunctionality:
     
     def test_imports(self):
         """Test that Azure SDK can be imported"""
-        from azure.storage.blob import BlobServiceClient
-        from azure.eventhub import EventHubProducerClient
+        from azure.storage.filedatalake import DataLakeServiceClient
+        from azure.servicebus import ServiceBusClient
         from azure.identity import DefaultAzureCredential
         
         # If we get here, imports are successful
@@ -21,7 +21,7 @@ class TestBasicFunctionality:
         # Mock configuration for emulator mode
         test_config = {
             'ckanext.native_cloud_storage.azure.use_emulator': 'true',
-            'ckanext.native_cloud_storage.azure.container_name': 'test-container',
+            'ckanext.native_cloud_storage.azure.file_system_name': 'test-filesystem',
         }
         
         mock_config.get.side_effect = lambda key, default=None: test_config.get(key, default)
@@ -36,7 +36,7 @@ class TestBasicFunctionality:
             storage = AzureBlobStorage()
             
             assert storage.use_emulator is True
-            assert storage.container_name == 'test-container'
+            assert storage.file_system_name == 'test-filesystem'
         
     def test_blob_name_generation_logic(self):
         """Test blob name generation without full storage setup"""
@@ -62,8 +62,9 @@ class TestBasicFunctionality:
             'ckanext.native_cloud_storage.azure.account_key',
             'ckanext.native_cloud_storage.azure.connection_string',
             'ckanext.native_cloud_storage.azure.container_name',
-            'ckanext.native_cloud_storage.azure.eventhub_connection_string',
-            'ckanext.native_cloud_storage.azure.eventhub_name',
+            'ckanext.native_cloud_storage.azure.file_system_name',
+            'ckanext.native_cloud_storage.azure.servicebus_connection_string',
+            'ckanext.native_cloud_storage.azure.servicebus_queue_name',
         ]
         
         # These are the configuration keys our extension expects

@@ -7,14 +7,14 @@ from ckanext.native_cloud_storage.storage import AzureBlobStorage
 
 
 class TestAzureBlobStorage:
-    """Test cases for Azure Blob Storage functionality"""
+    """Test cases for Azure Data Lake-backed storage functionality"""
     
     def setup_method(self):
         """Set up test environment"""
         self.test_config = {
             'ckanext.native_cloud_storage.azure.use_emulator': 'true',
-            'ckanext.native_cloud_storage.azure.container_name': 'test-container',
-            'ckanext.native_cloud_storage.azure.eventhub_name': 'test-eventhub'
+            'ckanext.native_cloud_storage.azure.file_system_name': 'test-filesystem',
+            'ckanext.native_cloud_storage.azure.servicebus_queue_name': 'test-file-events'
         }
         
     @patch('ckanext.native_cloud_storage.storage.config')
@@ -26,15 +26,15 @@ class TestAzureBlobStorage:
         assert storage.is_emulator_mode() is True
         
     @patch('ckanext.native_cloud_storage.storage.config')
-    @patch('ckanext.native_cloud_storage.storage.BlobServiceClient')
-    def test_blob_service_client_creation_emulator(self, mock_blob_client, mock_config):
-        """Test blob service client creation in emulator mode"""
+    @patch('ckanext.native_cloud_storage.storage.DataLakeServiceClient')
+    def test_blob_service_client_creation_emulator(self, mock_service_client, mock_config):
+        """Test data lake service client creation in emulator mode"""
         mock_config.get.side_effect = lambda key, default=None: self.test_config.get(key, default)
         
         storage = AzureBlobStorage()
         client = storage.blob_service_client
         
-        mock_blob_client.from_connection_string.assert_called_once()
+        mock_service_client.from_connection_string.assert_called_once()
         
     @patch('ckanext.native_cloud_storage.storage.config')
     def test_connection_test(self, mock_config):
@@ -43,10 +43,9 @@ class TestAzureBlobStorage:
         
         storage = AzureBlobStorage()
         
-        # Mock container client
-        mock_container_client = Mock()
-        mock_container_client.get_container_properties.return_value = True
-        storage._container_client = mock_container_client
+        mock_fs_client = Mock()
+        mock_fs_client.get_file_system_properties.return_value = True
+        storage._file_system_client = mock_fs_client
         
         assert storage.test_connection() is True
         
@@ -65,15 +64,14 @@ class TestAzureBlobStorage:
         storage.upload_field_storage = mock_file
         storage.filename = 'test.txt'
         
-        # Mock container client
-        mock_blob_client = Mock()
-        mock_container_client = Mock()
-        mock_container_client.get_blob_client.return_value = mock_blob_client
-        storage._container_client = mock_container_client
+        mock_file_client = Mock()
+        mock_fs_client = Mock()
+        mock_fs_client.get_file_client.return_value = mock_file_client
+        storage._file_system_client = mock_fs_client
         
         storage.upload()
         
-        mock_blob_client.upload_blob.assert_called_once()
+        mock_file_client.upload_data.assert_called_once()
         
     @patch('ckanext.native_cloud_storage.storage.config')
     @patch('os.path.exists')
@@ -88,8 +86,7 @@ class TestAzureBlobStorage:
         
         storage = AzureBlobStorage()
         
-        # Mock container client
-        storage._container_client = Mock()
+        storage._file_system_client = Mock()
         
         with patch('os.path.getsize', return_value=1024):
             results = storage.migrate_existing_files(dry_run=True)

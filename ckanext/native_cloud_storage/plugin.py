@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 class NativeCloudStoragePlugin(plugins.SingletonPlugin):
     """
-    CKAN plugin for native cloud storage integration with Azure Blob Storage
+    CKAN plugin for native cloud storage integration with Azure Data Lake Gen2
     """
     
     plugins.implements(plugins.IConfigurer)
@@ -29,11 +29,11 @@ class NativeCloudStoragePlugin(plugins.SingletonPlugin):
         toolkit.add_resource('public', 'native_cloud_storage')
     
     def get_resource_uploader(self, data_dict):
-        """Return the Azure Blob Storage uploader for resources"""
+        """Return the Azure Data Lake uploader for resources"""
         return AzureBlobStorage()
     
     def get_uploader(self, upload_to, old_filename=None):
-        """Return the Azure Blob Storage uploader for general storage"""
+        """Return the Azure Data Lake uploader for general storage"""
         return AzureBlobStorage(upload_to=upload_to, old_filename=old_filename)
     
     def get_actions(self):
@@ -63,7 +63,7 @@ def storage_status(context, data_dict):
         return {
             'success': True,
             'status': 'connected' if status else 'disconnected',
-            'storage_type': 'azure_blob',
+            'storage_type': 'azure_data_lake_gen2',
             'emulator_mode': storage.is_emulator_mode(),
             'container_name': storage.container_name
         }

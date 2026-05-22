@@ -28,8 +28,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'azure-storage-blob>=12.0.0',
-        'azure-eventhub>=5.0.0',
+        'azure-storage-file-datalake>=12.19.0',
+        'azure-servicebus>=7.12.0',
         'azure-identity>=1.0.0',
         'ckan>=2.9.0',
     ],
