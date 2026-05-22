@@ -27,7 +27,7 @@ class TestAzureBlobStorage:
         
     @patch('ckanext.native_cloud_storage.storage.config')
     @patch('ckanext.native_cloud_storage.storage.DataLakeServiceClient')
-    def test_blob_service_client_creation_emulator(self, mock_service_client, mock_config):
+    def test_data_lake_service_client_creation_emulator(self, mock_service_client, mock_config):
         """Test data lake service client creation in emulator mode"""
         mock_config.get.side_effect = lambda key, default=None: self.test_config.get(key, default)
         
