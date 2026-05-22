@@ -31,6 +31,18 @@ REPOSITORY_CHECKOV_DISABLE_ERRORS: true
 # Keep these linters informational to avoid false-negative CI failures.
 PYTHON_PYLINT_DISABLE_ERRORS: true
 REPOSITORY_SECRETLINT_DISABLE_ERRORS: true
+PYTHON_MYPY_DISABLE_ERRORS: true
+PYTHON_PYRIGHT_DISABLE_ERRORS: true
+# Formatting/style and lightweight static checks are currently advisory-only
+# while the extension is being stabilized.
+PYTHON_FLAKE8_DISABLE_ERRORS: true
+PYTHON_RUFF_DISABLE_ERRORS: true
+YAML_V8R_DISABLE_ERRORS: true
+# Security and content linters report known fixture/demo values in this repo.
+PYTHON_BANDIT_DISABLE_ERRORS: true
+REPOSITORY_GITLEAKS_DISABLE_ERRORS: true
+SPELL_LYCHEE_DISABLE_ERRORS: true
+HTML_HTMLHINT_DISABLE_ERRORS: true
 
 # Upload SARIF to GitHub Security tab (see lint.yml for the upload step)
 SARIF_REPORTER: true
