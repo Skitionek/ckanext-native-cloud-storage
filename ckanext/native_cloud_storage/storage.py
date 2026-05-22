@@ -196,7 +196,7 @@ class AzureBlobStorage(_UploadBase):
                 file_client.set_http_headers(
                     content_settings=ContentSettings(content_type=content_type)
                 )
-            except Exception:  # pragma: no cover - best-effort compatibility
+            except (TypeError, AzureError):  # pragma: no cover - best-effort compatibility
                 pass
             
             self.filename = file_path
@@ -220,9 +220,9 @@ class AzureBlobStorage(_UploadBase):
         else:
             return f"{timestamp}_{safe_filename}"
     
-    def _get_blob_url(self, blob_name):
+    def _get_blob_url(self, file_path):
         """Get URL for a file path with SAS token when possible."""
-        file_path = blob_name.lstrip('/')
+        file_path = file_path.lstrip('/')
         if not file_path or file_path.endswith('/'):
             raise ValueError('Invalid file path for SAS URL generation')
         file_client = self.file_system_client.get_file_client(file_path)
@@ -269,11 +269,11 @@ class AzureBlobStorage(_UploadBase):
             log.error(f"Failed to generate file URL: {e}")
             return file_client.url
     
-    def _send_file_event(self, event_type, blob_name):
+    def _send_file_event(self, event_type, file_path):
         """Send file event to Service Bus queue, fallback to Event Hub."""
         event_data = {
             'event_type': event_type,
-            'blob_name': blob_name,
+            'blob_name': file_path,
             'container_name': self.file_system_name,
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'source': 'ckan_native_cloud_storage'
@@ -372,7 +372,7 @@ class AzureBlobStorage(_UploadBase):
                                     pass
                                 
                                 file_client.upload_data(
-                                    data=f.read(),
+                                    data=f,
                                     overwrite=False,
                                     metadata={
                                         'original_path': rel_path,
