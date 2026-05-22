@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 
-
 class TestBasicFunctionality:
     """Basic tests that don't require CKAN installation"""
 
