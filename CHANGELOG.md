@@ -20,4 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CODEOWNERS, FUNDING.yml, copilot-instructions.md
   - `.cspell.json` spell-checking config
 
+### Changed
+
+- Migrated file storage from Azure Blob Storage APIs to Azure Data Lake Storage Gen2 filesystem APIs while preserving CKAN uploader compatibility.
+- Switched primary file-event notification configuration to Azure Service Bus Queue settings, with Event Hub fallback for backward compatibility.
+
+### Fixed
+
+- Updated configuration examples, admin UI labels, and README terminology to match Data Lake Gen2 semantics (`file_system_name`) and queue-based event configuration.
+
 [Unreleased]: https://github.com/Skitionek/ckanext-native-cloud-storage
