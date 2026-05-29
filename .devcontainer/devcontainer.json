@@ -1,14 +1,12 @@
 {
-	"name": "CKAN Dev",
-	"dockerComposeFile": [
-		"docker-compose.dev.yml"
-	],
-	"service": "ckan-dev",
-	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	"features": {
-		"ghcr.io/devcontainers/features/python:1": {
-			"installTools": true,
-			"version": "latest"
-		}
-	}
+  "name": "CKAN Dev",
+  "dockerComposeFile": ["docker-compose.dev.yml"],
+  "service": "ckan-dev",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "installTools": true,
+      "version": "latest"
+    }
+  }
 }
