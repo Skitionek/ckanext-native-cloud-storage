@@ -90,7 +90,7 @@ ckan-docker-redis-1        redis:6                            "docker-entrypoint
 ckan-docker-solr-1         ckan/ckan-solr:2.10-solr9          "docker-entrypoint.s…"   solr         4 minutes ago   Up 4 minutes (healthy)
 ```
 
-After this step, CKAN should be running at `CKAN_SITE_URL` (by default https://localhost:8443)
+After this step, CKAN should be running at `CKAN_SITE_URL` (by default <https://localhost:8443>)
 
 ### Development mode
 
@@ -99,7 +99,7 @@ Use this mode if you are making code changes to CKAN and either creating new ext
 To develop local extensions use the `docker-compose.dev.yml` file with help from the scripts under `bin`:
 
 | dev script               | description                                                                                                         |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+|--------------------------|---------------------------------------------------------------------------------------------------------------------|
 | `bin/ckan …`             | exec `ckan` cli within the ckan-dev container                                                                       |
 | `bin/compose …`          | dev docker compose commands                                                                                         |
 | `bin/generate_extension` | generate extension in `src` directory                                                                               |
@@ -156,7 +156,7 @@ and update the site URL setting:
   CKAN_SITE_URL=https://localhost:5000
 ```
 
-After recreating the `ckan-dev` container, you should be able to access CKAN at https://localhost:5000
+After recreating the `ckan-dev` container, you should be able to access CKAN at <https://localhost:5000>
 
 #### Remote Debugging with VS Code
 
@@ -189,8 +189,8 @@ You can now set breakpoints and remote debug your CKAN development instance.
 
 The Docker Compose environment `.env` file by default is set up for production mode. There are a few changes needed if you would like to run in Development mode:
 
-1. Change the `CKAN_SITE_URL` variable to be: http://localhost:5000
-2. Update the `CKAN__DATAPUSHER__CALLBACK_URL_BASE` variable to use the `ckan-dev` container name: http://ckan-dev:5000
+1. Change the `CKAN_SITE_URL` variable to be: <http://localhost:5000>
+2. Update the `CKAN__DATAPUSHER__CALLBACK_URL_BASE` variable to use the `ckan-dev` container name: <http://ckan-dev:5000>
 
 ## 5. CKAN images
 
@@ -208,7 +208,7 @@ The Docker image config files used to build your CKAN project are located in the
 
 ### Extending the base images
 
-The CKAN base images are built from https://github.com/ckan/ckan-docker-base/
+The CKAN base images are built from <https://github.com/ckan/ckan-docker-base/>
 
 You can modify the docker files to build your own customized image tailored to your project, installing any extensions and extra requirements needed. For example here is where you would update to use a different CKAN base image ie: `ckan/ckan-base:<new version>`
 
@@ -277,7 +277,7 @@ The images use the application server [_uWSGI_](https://uwsgi-docs.readthedocs.i
 For most use cases, the defaults specified in `ckan-X.XX/setup/start_ckan.sh` in `DEFAULT_UWSGI_OPTS` of the [ckan/ckan-docker-base](https://github.com/ckan/ckan-docker-base) image are fine. If required, you can either _overwrite_ the defaults or _append_ additional arguments.
 
 | Variable           | Description                                                                                             | Defaults |
-| :----------------- | :------------------------------------------------------------------------------------------------------ | :------- |
+|:-------------------|:--------------------------------------------------------------------------------------------------------|:---------|
 | `UWSGI_OPTS`       | If set, overwrites `DEFAULT_UWSGI_OPTS`. If not set, `UWSGI_OPTS` will bet set to `DEFAULT_UWSGI_OPTS`. | unset    |
 | `EXTRA_UWSGI_OPTS` | If set, appends its content to `UWSGI_OPTS`.                                                            | unset    |
 
@@ -333,7 +333,7 @@ For more information please see [ckanext-envvars](https://github.com/okfn/ckanex
 
 ## 10. CKAN_SITE_URL
 
-For convenience the CKAN_SITE_URL parameter should be set in the .env file. For development it can be set to http://localhost:5000 and non-development set to https://localhost:8443
+For convenience the CKAN_SITE_URL parameter should be set in the .env file. For development it can be set to <http://localhost:5000> and non-development set to <https://localhost:8443>
 
 ## 11. Manage new users
 
@@ -357,7 +357,7 @@ The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so 
 
 ## 13. Replacing DataPusher with XLoader
 
-Check out the wiki page for this: https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader
+Check out the wiki page for this: <https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader>
 
 ## Copying and License
 
@@ -366,4 +366,4 @@ This material is copyright (c) 2006-2023 Open Knowledge Foundation and contribut
 It is open and licensed under the GNU Affero General Public License (AGPL) v3.0
 whose full text may be found at:
 
-http://www.fsf.org/licensing/licenses/agpl-3.0.html
+<http://www.fsf.org/licensing/licenses/agpl-3.0.html>
