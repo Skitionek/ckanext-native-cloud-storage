@@ -1,6 +1,6 @@
 # Azure SDK dependencies
 azure-storage-file-datalake>=12.24.0,<13.0.0
-azure-servicebus>=7.12.0,<8.0.0
+azure-servicebus>=7.14.3,<8.0.0
 azure-identity>=1.25.3,<2.0.0
 azure-core>=1.41.0
 
