@@ -127,6 +127,7 @@ ckan -c /path/to/ckan.ini native-cloud-storage status
 ```
 
 Expected output:
+
 ```
 Storage Status: connected
 Storage Type: azure_blob

@@ -21,11 +21,13 @@ A CKAN extension for native cloud storage integration with Azure Data Lake Stora
 ## Installation
 
 1. **Clone or install the extension:**
+
    ```bash
    pip install ckanext-native-cloud-storage
    ```
 
    Or from source:
+
    ```bash
    git clone https://github.com/Skitionek/ckanext-native-cloud-storage.git
    cd ckanext-native-cloud-storage
@@ -34,6 +36,7 @@ A CKAN extension for native cloud storage integration with Azure Data Lake Stora
    ```
 
 2. **Add the plugin to your CKAN configuration:**
+
    ```ini
    ckan.plugins = ... native_cloud_storage
    ```
@@ -75,24 +78,27 @@ ckanext.native_cloud_storage.azure.servicebus_queue_name = ckan-file-events
 This extension includes Docker Compose setup for running Azure emulators locally:
 
 1. **Start the emulators:**
+
    ```bash
    docker-compose up -d azurite eventhub-emulator
    ```
 
 2. **Verify emulators are running:**
+
    ```bash
    # Check Azurite (Storage Emulator)
    curl http://localhost:10000/devstoreaccount1
-   
+
    # Check Service Bus Queue Emulator
    docker logs ckan-eventhub-emulator
    ```
 
 3. **Full development environment:**
+
    ```bash
    # Start all services including CKAN
    docker-compose up -d
-   
+
    # Access CKAN at http://localhost:5000
    ```
 
@@ -101,12 +107,14 @@ This extension includes Docker Compose setup for running Azure emulators locally
 If you prefer to run emulators manually:
 
 **Azurite (Azure Storage Emulator):**
+
 ```bash
 npm install -g azurite
 azurite --silent --location /tmp/azurite --debug /tmp/azurite/debug.log
 ```
 
 **Azure Service Bus Queue Emulator (Event Hubs emulator compatible mode):**
+
 ```bash
 docker run -it --rm -p 5672:5672 mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest
 ```
@@ -127,6 +135,7 @@ Once configured, all CKAN file uploads will automatically use Azure Data Lake St
 The extension provides admin-only actions for storage management:
 
 **Check Storage Status:**
+
 ```python
 # Via CKAN API
 import ckan.plugins.toolkit as toolkit
@@ -135,6 +144,7 @@ print(result)
 ```
 
 **Migrate Existing Files:**
+
 ```python
 # Dry run to see what would be migrated
 result = toolkit.get_action('storage_migrate')({}, {'dry_run': True})
@@ -206,11 +216,13 @@ The extension consists of:
 ### Service Bus Queue Integration
 
 File operations generate events sent to Azure Service Bus Queue:
+
 - `upload`: When a file is uploaded
 - `delete`: When a file is deleted
 - `migrate`: When files are migrated from local storage
 
 Event payload includes:
+
 ```json
 {
   "event_type": "upload",
@@ -226,16 +238,19 @@ Event payload includes:
 ### Common Issues
 
 **Connection Errors:**
+
 - Verify Azure Storage credentials
 - Check network connectivity to Azure
 - For emulators, ensure they are running and accessible
 
 **Permission Errors:**
+
 - Verify Azure Storage Account permissions
 - Check SAS token generation settings
 - Ensure file system exists and is accessible
 
 **File Upload Issues:**
+
 - Check CKAN file upload limits
 - Verify file system permissions
 - Review Azure Storage logs
@@ -243,6 +258,7 @@ Event payload includes:
 ### Debug Mode
 
 Enable debug logging in CKAN configuration:
+
 ```ini
 [logger_ckanext_native_cloud_storage]
 level = DEBUG

@@ -1,6 +1,6 @@
 include:
   - path:
-    - docker-compose.ckan-dev.yml
+      - docker-compose.ckan-dev.yml
     env_file: ckan.env
   - path: docker-compose.storage-dev.yml
     env_file: storage.env

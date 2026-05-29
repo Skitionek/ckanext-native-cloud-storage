@@ -1,11 +1,10 @@
 # Docker Compose setup for CKAN
 
-
 - [Docker Compose setup for CKAN](#docker-compose-setup-for-ckan)
-  - [1.  Overview](#1--overview)
-  - [2.  Installing Docker](#2--installing-docker)
-  - [3.  docker compose *vs* docker-compose](#3--docker-compose-vs-docker-compose)
-  - [4.  Install (build and run) CKAN plus dependencies](#4--install-build-and-run-ckan-plus-dependencies)
+  - [1. Overview](#1--overview)
+  - [2. Installing Docker](#2--installing-docker)
+  - [3. docker compose _vs_ docker-compose](#3--docker-compose-vs-docker-compose)
+  - [4. Install (build and run) CKAN plus dependencies](#4--install-build-and-run-ckan-plus-dependencies)
     - [Base mode](#base-mode)
     - [Development mode](#development-mode)
       - [Create an extension](#create-an-extension)
@@ -20,14 +19,13 @@
   - [7. Datastore and datapusher](#7-datastore-and-datapusher)
   - [8. NGINX](#8-nginx)
   - [9. ckanext-envvars](#9-ckanext-envvars)
-  - [10. CKAN\_SITE\_URL](#10-ckan_site_url)
+  - [10. CKAN_SITE_URL](#10-ckan_site_url)
   - [11. Manage new users](#11-manage-new-users)
   - [12. Changing the base image](#12-changing-the-base-image)
   - [13. Replacing DataPusher with XLoader](#13-replacing-datapusher-with-xloader)
   - [Copying and License](#copying-and-license)
 
-
-## 1.  Overview
+## 1. Overview
 
 This is a set of configuration and setup files to run a CKAN site.
 
@@ -35,28 +33,28 @@ The CKAN images used are from the official CKAN [ckan-docker](https://github.com
 
 The non-CKAN images are as follows:
 
-* DataPusher: CKAN's [pre-configured DataPusher image](https://github.com/ckan/ckan-docker-base/tree/main/datapusher).
-* PostgreSQL: Official PostgreSQL image. Database files are stored in a named volume.
-* Solr: CKAN's [pre-configured Solr image](https://github.com/ckan/ckan-solr). Index data is stored in a named volume.
-* Redis: standard Redis image
-* NGINX: latest stable nginx image that includes SSL and Non-SSL endpoints
+- DataPusher: CKAN's [pre-configured DataPusher image](https://github.com/ckan/ckan-docker-base/tree/main/datapusher).
+- PostgreSQL: Official PostgreSQL image. Database files are stored in a named volume.
+- Solr: CKAN's [pre-configured Solr image](https://github.com/ckan/ckan-solr). Index data is stored in a named volume.
+- Redis: standard Redis image
+- NGINX: latest stable nginx image that includes SSL and Non-SSL endpoints
 
 The site is configured using environment variables that you can set in the `.env` file.
 
-## 2.  Installing Docker
+## 2. Installing Docker
 
 Install Docker by following the following instructions: [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
 To verify a successful Docker installation, run `docker run hello-world` and `docker version`. These commands should output
 versions for client and server.
 
-## 3.  docker compose *vs* docker-compose
+## 3. docker compose _vs_ docker-compose
 
 All Docker Compose commands in this README will use the V2 version of Compose ie: `docker compose`. The older version (V1)
 used the `docker-compose` command. Please see [Docker Compose](https://docs.docker.com/compose/compose-v2/) for
 more information.
 
-## 4.  Install (build and run) CKAN plus dependencies
+## 4. Install (build and run) CKAN plus dependencies
 
 ### Base mode
 
@@ -69,11 +67,11 @@ Copy the included `.env.example` and rename it to `.env`. Modify it depending on
 
 To build the images:
 
-	docker compose build
+    docker compose build
 
 To start the containers:
 
-	docker compose up
+    docker compose up
 
 This will start up the containers in the current window. By default the containers will log direct to this window with each container
 using a different colour. You could also use the -d "detach mode" option ie: `docker compose up -d` if you wished to use the current
@@ -94,37 +92,35 @@ ckan-docker-solr-1         ckan/ckan-solr:2.10-solr9          "docker-entrypoint
 
 After this step, CKAN should be running at `CKAN_SITE_URL` (by default https://localhost:8443)
 
-
 ### Development mode
 
 Use this mode if you are making code changes to CKAN and either creating new extensions or making code changes to existing extensions. This mode also uses the `.env` file for config options.
 
 To develop local extensions use the `docker-compose.dev.yml` file with help from the scripts under `bin`:
 
-dev script | description
---- | ---
-`bin/ckan …` | exec `ckan` cli within the ckan-dev container
-`bin/compose …` | dev docker compose commands
-`bin/generate_extension` | generate extension in `src` directory
-`bin/install_src` | install all extensions from `src` directory (ckan-dev does not need to be running)
-`bin/reload` | reload ckan within the ckan-dev container without restarting
-`bin/restart` | shut down and restart the whole ckan-dev container (use `bin/compose up -d` instead to reload new values from .env)
-`bin/shell` | exec bash prompt within the ckan-dev container
+| dev script               | description                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `bin/ckan …`             | exec `ckan` cli within the ckan-dev container                                                                       |
+| `bin/compose …`          | dev docker compose commands                                                                                         |
+| `bin/generate_extension` | generate extension in `src` directory                                                                               |
+| `bin/install_src`        | install all extensions from `src` directory (ckan-dev does not need to be running)                                  |
+| `bin/reload`             | reload ckan within the ckan-dev container without restarting                                                        |
+| `bin/restart`            | shut down and restart the whole ckan-dev container (use `bin/compose up -d` instead to reload new values from .env) |
+| `bin/shell`              | exec bash prompt within the ckan-dev container                                                                      |
 
 To build the images:
 
-	bin/compose build
+    bin/compose build
 
 To install extensions from the `src` directory:
 
-	bin/install_src
+    bin/install_src
 
 To start the containers:
 
-	bin/compose up
+    bin/compose up
 
 See [CKAN images](#5-ckan-images) for more details of what happens when using development mode.
-
 
 #### Create an extension
 
@@ -146,7 +142,6 @@ Written: /srv/app/src_extensions/ckanext-mytheme
 
 The new extension files and directories are created in the `/srv/app/src_extensions/` folder in the running container. They will also exist in the local src/ directory as local `/src` directory is mounted as `/srv/app/src_extensions/` on the ckan container.
 
-
 #### Running HTTPS on development mode
 
 Sometimes is useful to run your local development instance under HTTPS, for instance if you are using authentication extensions like [ckanext-saml2auth](https://github.com/keitaroinc/ckanext-saml2auth). To enable it, set the following in your `.env` file:
@@ -163,7 +158,6 @@ and update the site URL setting:
 
 After recreating the `ckan-dev` container, you should be able to access CKAN at https://localhost:5000
 
-
 #### Remote Debugging with VS Code
 
 [Visual Studio Code](https://code.visualstudio.com/) is a free IDE that includes remote
@@ -176,7 +170,7 @@ development instance in your `.env` file:
 
 Next run the install script to install debugpy:
 
-	bin/install_src
+    bin/install_src
 
 Then start the containers in [development mode](#development-mode) and launch VS Code.
 
@@ -191,7 +185,6 @@ In VS Code:
 
 You can now set breakpoints and remote debug your CKAN development instance.
 
-
 #### Updating the environment file for development mode
 
 The Docker Compose environment `.env` file by default is set up for production mode. There are a few changes needed if you would like to run in Development mode:
@@ -199,22 +192,19 @@ The Docker Compose environment `.env` file by default is set up for production m
 1. Change the `CKAN_SITE_URL` variable to be: http://localhost:5000
 2. Update the `CKAN__DATAPUSHER__CALLBACK_URL_BASE` variable to use the `ckan-dev` container name: http://ckan-dev:5000
 
-
 ## 5. CKAN images
+
 ![ckan images](https://user-images.githubusercontent.com/54408245/207079416-a01235af-2dea-4425-b6fd-f8c3687dd993.png)
-
-
 
 The Docker image config files used to build your CKAN project are located in the `ckan/` folder. There are two Docker files:
 
-* `Dockerfile`: this is based on `ckan/ckan-base:<version>`, a base image located in the DockerHub repository, that has CKAN installed along with all its dependencies, properly configured and running on [uWSGI](https://uwsgi-docs.readthedocs.io/en/latest/) (production setup)
-* `Dockerfile.dev`:  this is based on `ckan/ckan-base:<version>-dev` also located located in the DockerHub repository, and extends `ckan/ckan-base:<version>` to include:
+- `Dockerfile`: this is based on `ckan/ckan-base:<version>`, a base image located in the DockerHub repository, that has CKAN installed along with all its dependencies, properly configured and running on [uWSGI](https://uwsgi-docs.readthedocs.io/en/latest/) (production setup)
+- `Dockerfile.dev`: this is based on `ckan/ckan-base:<version>-dev` also located located in the DockerHub repository, and extends `ckan/ckan-base:<version>` to include:
+  - Any extension cloned on the `src` folder will be installed in the CKAN container when booting up Docker Compose (`docker compose up`). This includes installing any requirements listed in a `requirements.txt` (or `pip-requirements.txt`) file and running `python setup.py develop`.
+  - CKAN is started running this: `/usr/bin/ckan -c /srv/app/ckan.ini run -H 0.0.0.0`.
+  - Make sure to add the local plugins to the `CKAN__PLUGINS` env var in the `.env` file.
 
-  * Any extension cloned on the `src` folder will be installed in the CKAN container when booting up Docker Compose (`docker compose up`). This includes installing any requirements listed in a `requirements.txt` (or `pip-requirements.txt`) file and running `python setup.py develop`.
-  * CKAN is started running this: `/usr/bin/ckan -c /srv/app/ckan.ini run -H 0.0.0.0`.
-  * Make sure to add the local plugins to the `CKAN__PLUGINS` env var in the `.env` file.
-
-* Any custom changes to the scripts run during container start up can be made to scripts in the `setup/` directory. For instance if you wanted to change the port on which CKAN runs you would need to make changes to the Docker Compose yaml file, and the `start_ckan.sh.override` file. Then you would need to add the following line to the Dockerfile ie: `COPY setup/start_ckan.sh.override ${APP_DIR}/start_ckan.sh`. The `start_ckan.sh` file in the locally built image would override the `start_ckan.sh` file included in the base image
+- Any custom changes to the scripts run during container start up can be made to scripts in the `setup/` directory. For instance if you wanted to change the port on which CKAN runs you would need to make changes to the Docker Compose yaml file, and the `start_ckan.sh.override` file. Then you would need to add the following line to the Dockerfile ie: `COPY setup/start_ckan.sh.override ${APP_DIR}/start_ckan.sh`. The `start_ckan.sh` file in the locally built image would override the `start_ckan.sh` file included in the base image
 
 ### Extending the base images
 
@@ -286,14 +276,13 @@ The images use the application server [_uWSGI_](https://uwsgi-docs.readthedocs.i
 
 For most use cases, the defaults specified in `ckan-X.XX/setup/start_ckan.sh` in `DEFAULT_UWSGI_OPTS` of the [ckan/ckan-docker-base](https://github.com/ckan/ckan-docker-base) image are fine. If required, you can either _overwrite_ the defaults or _append_ additional arguments.
 
-| Variable            | Description                                           | Defaults           |
-|:--------------------|:------------------------------------------------------| :------------------|
-| `UWSGI_OPTS`        | If set, overwrites `DEFAULT_UWSGI_OPTS`. If not set, `UWSGI_OPTS` will bet set to `DEFAULT_UWSGI_OPTS`.             | unset              |
-| `EXTRA_UWSGI_OPTS`  | If set, appends its content to `UWSGI_OPTS`.          | unset              |
+| Variable           | Description                                                                                             | Defaults |
+| :----------------- | :------------------------------------------------------------------------------------------------------ | :------- |
+| `UWSGI_OPTS`       | If set, overwrites `DEFAULT_UWSGI_OPTS`. If not set, `UWSGI_OPTS` will bet set to `DEFAULT_UWSGI_OPTS`. | unset    |
+| `EXTRA_UWSGI_OPTS` | If set, appends its content to `UWSGI_OPTS`.                                                            | unset    |
 
 > [!IMPORTANT]
 > These setting **do not** apply for the dev images.
-
 
 ## 6. Debugging with pdb
 
@@ -328,15 +317,15 @@ This extension checks for environmental variables conforming to an expected form
 
 For the extension to correctly identify which env var keys map to the format used for the config object, env var keys should be formatted in the following way:
 
-  All uppercase
-  Replace periods ('.') with two underscores ('__')
-  Keys must begin with 'CKAN' or 'CKANEXT', if they do not you can prepend them with '`CKAN___`'
+All uppercase
+Replace periods ('.') with two underscores ('**')
+Keys must begin with 'CKAN' or 'CKANEXT', if they do not you can prepend them with '`CKAN\_**`'
 
 For example:
 
-  * `CKAN__PLUGINS="envvars image_view text_view recline_view datastore datapusher"`
-  * `CKAN__DATAPUSHER__CALLBACK_URL_BASE=http://ckan:5000`
-  * `CKAN___BEAKER__SESSION__SECRET=CHANGE_ME`
+- `CKAN__PLUGINS="envvars image_view text_view recline_view datastore datapusher"`
+- `CKAN__DATAPUSHER__CALLBACK_URL_BASE=http://ckan:5000`
+- `CKAN___BEAKER__SESSION__SECRET=CHANGE_ME`
 
 These parameters can be added to the `.env` file
 
@@ -362,7 +351,6 @@ For convenience the CKAN_SITE_URL parameter should be set in the .env file. For 
 
    In development mode use `bin/ckan` instead of `docker compose exec ckan ckan` for the above commands.
 
-
 ## 12. Changing the base image
 
 The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so a different DockerHub image is used eg: ckan/ckan-base:2.10.5 can be used instead of ckan/ckan-base:2.11.0
@@ -371,8 +359,7 @@ The base image used in the CKAN Dockerfile and Dockerfile.dev can be changed so 
 
 Check out the wiki page for this: https://github.com/ckan/ckan-docker/wiki/Replacing-DataPusher-with-XLoader
 
-Copying and License
--------------------
+## Copying and License
 
 This material is copyright (c) 2006-2023 Open Knowledge Foundation and contributors.
 
