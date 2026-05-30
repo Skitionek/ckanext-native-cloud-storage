@@ -12,10 +12,14 @@ COPY --chown=ckan-sys:ckan-sys patches ${APP_DIR}/patches
 
 USER ckan
 
-RUN for d in $APP_DIR/patches/*; do \
-        if [ -d $d ]; then \
-            for f in `ls $d/*.patch | sort -g`; do \
-                cd $SRC_DIR/`basename "$d"` && echo "$0: Applying patch $f to $SRC_DIR/`basename $d`"; patch -p1 < "$f" ; \
-            done ; \
+WORKDIR ${APP_DIR}
+
+RUN for d in "${APP_DIR}"/patches/*; do \
+        if [ -d "$d" ]; then \
+            for f in "$d"/*.patch; do \
+                [ -f "$f" ] || continue; \
+                echo "$0: Applying patch $f to ${SRC_DIR}/$(basename "$d")"; \
+                patch -d "${SRC_DIR}/$(basename "$d")" -p1 < "$f"; \
+            done; \
         fi ; \
     done
