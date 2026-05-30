@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-ROOT="$(dirname ${BASH_SOURCE[0]})/.."
+ROOT="$(dirname "${BASH_SOURCE[0]}")/.."
 if [[ "$(uname)" == "Darwin" ]]; then
   # macOS
 	USERGROUP="$(stat -f '%u:%g' "${ROOT}/src")"
