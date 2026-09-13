@@ -4,8 +4,14 @@ This guide provides step-by-step instructions for installing and configuring the
 
 ## Prerequisites
 
-- CKAN 2.9+ installed and running
+- CKAN 2.12.0+ installed and running
 - Python 3.10+
+
+> The CKAN/Python support policy above must match `project.dependencies`
+> (`ckan>=...`) and `project.requires-python` in `pyproject.toml`, which is
+> the single source of truth for these constraints. A pytest regression
+> check (`ckanext/native_cloud_storage/tests/test_packaging_metadata.py`)
+> fails CI if this document drifts from `pyproject.toml`.
 - Docker (for development with emulators)
 - Azure Storage Account (for production) or Azure Storage Emulator (for development)
 
