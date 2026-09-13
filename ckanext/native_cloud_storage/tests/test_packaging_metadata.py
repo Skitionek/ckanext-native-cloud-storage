@@ -20,8 +20,6 @@ in `INSTALL.md`. Nothing else needs to change -- there is no setup.py.
 import re
 import subprocess
 import sys
-import sysconfig
-import tarfile
 import tempfile
 from pathlib import Path
 
@@ -60,9 +58,9 @@ def test_pyproject_declares_ckan_and_python_floor():
     assert requires_python, "pyproject.toml [project] must set requires-python"
 
     ckan_floor = _ckan_floor_from_dependencies(project.get("dependencies", []))
-    assert ckan_floor, (
-        "pyproject.toml [project].dependencies must pin a 'ckan>=X.Y.Z' floor"
-    )
+    assert (
+        ckan_floor
+    ), "pyproject.toml [project].dependencies must pin a 'ckan>=X.Y.Z' floor"
 
 
 def test_install_md_matches_pyproject_support_policy():
@@ -99,7 +97,9 @@ def test_requirements_txt_does_not_conflict_with_pyproject():
     ckan_floor = _ckan_floor_from_dependencies(data["project"].get("dependencies", []))
 
     req_text = REQUIREMENTS_TXT.read_text()
-    req_ckan_matches = re.findall(r"^ckan\s*>=\s*([0-9][0-9A-Za-z.\-]*)", req_text, re.M)
+    req_ckan_matches = re.findall(
+        r"^ckan\s*>=\s*([0-9][0-9A-Za-z.\-]*)", req_text, re.M
+    )
 
     for req_floor in req_ckan_matches:
         assert req_floor == ckan_floor, (
@@ -112,9 +112,12 @@ def test_requirements_txt_does_not_conflict_with_pyproject():
 def test_package_builds_and_passes_twine_check():
     """`python -m build --sdist` must succeed and `twine check` must pass on the result."""
     for tool in ("build", "twine"):
-        if subprocess.run(
-            [sys.executable, "-c", f"import {tool}"], capture_output=True
-        ).returncode != 0:
+        if (
+            subprocess.run(
+                [sys.executable, "-c", f"import {tool}"], capture_output=True
+            ).returncode
+            != 0
+        ):
             pytest.skip(f"'{tool}' is not installed in this environment")
 
     with tempfile.TemporaryDirectory() as tmpdir:
