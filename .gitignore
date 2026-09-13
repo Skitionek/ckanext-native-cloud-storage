@@ -57,4 +57,4 @@ ckan.ini
 who.ini
 
 # MegaLinter reports
-megalinter-reports/
+megalinter-reports/.venv-full/
