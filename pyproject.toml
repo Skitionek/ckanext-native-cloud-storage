@@ -5,19 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ckanext-native-cloud-storage"
 version = "0.1.0"
-description = "CKAN extension for native cloud storage integration."
+description = "CKAN extension for native cloud storage with Azure support"
 authors = [
     { name = "Skitionek" }
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
+keywords = ["CKAN", "Azure", "Cloud", "Storage"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+]
 dependencies = [
-    # Add your runtime dependencies here
+    # CKAN support policy: this extension targets CKAN >=2.12.0, which
+    # requires Python >=3.10 (see requires-python above) -- the two
+    # floors are intentionally aligned.
+    "ckan>=2.12.0",
+    "azure-storage-file-datalake>=12.25.0,<13.0.0",
+    "azure-servicebus>=7.14.3,<8.0.0",
+    "azure-identity>=1.25.3,<2.0.0",
+    "azure-core>=1.41.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "flake8>=7.3.0",
+    "black>=26.5.1",
+    "responses>=0.26.2",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Skitionek/ckanext-native-cloud-storage"
+
+[project.entry-points."ckan.plugins"]
+native_cloud_storage = "ckanext.native_cloud_storage.plugin:NativeCloudStoragePlugin"
+
+[project.entry-points."ckan.click_commands"]
+native_cloud_storage = "ckanext.native_cloud_storage.commands:get_commands"
+
+[project.entry-points."babel.extractors"]
+ckan = "ckan.lib.extract:extract_ckan"
 
 [tool.setuptools]
 packages = ["ckanext.native_cloud_storage"]
