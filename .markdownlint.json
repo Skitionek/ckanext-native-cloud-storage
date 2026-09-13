@@ -1,0 +1,20 @@
+{
+  "MD004": false,
+  "MD007": {
+    "indent": 2
+  },
+  "MD013": false,
+  "MD026": {
+    "punctuation": ".,;:!。，；:"
+  },
+  "MD029": false,
+  "MD033": false,
+  "MD036": false,
+  "blank_lines": false,
+  "MD040": false,
+  "MD041": false,
+  "MD046": false,
+  "MD051": false,
+  "MD059": false,
+  "_comment": "MD013 (line length), MD040 (fenced code language), MD041 (first line heading), MD046 (code block style), MD051 (link fragments) and MD059 (descriptive link text) are disabled: they mostly fire on .devcontainer/ckan-docker/README.md, a README vendored from the upstream ckan-docker devcontainer project that we keep close to the original wording/formatting rather than reformatting."
+}
