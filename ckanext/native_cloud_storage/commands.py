@@ -17,7 +17,7 @@ def native_cloud_storage():
 def status():
     """Check Azure storage connection status"""
     try:
-        result = toolkit.get_action("storage_status")({}, {})
+        result = toolkit.get_action("storage_status")({"ignore_auth": True}, {})
 
         click.echo(f"Storage Status: {result['status']}")
         click.echo(f"Storage Type: {result['storage_type']}")
@@ -43,7 +43,9 @@ def status():
 def migrate(dry_run):
     """Migrate existing files to Azure storage"""
     try:
-        result = toolkit.get_action("storage_migrate")({}, {"dry_run": dry_run})
+        result = toolkit.get_action("storage_migrate")(
+            {"ignore_auth": True}, {"dry_run": dry_run}
+        )
 
         if dry_run:
             click.echo("DRY RUN - No files will be migrated")
@@ -78,7 +80,7 @@ def migrate(dry_run):
 
 @native_cloud_storage.command()
 @click.option("--container", help="Container name to create")
-def setup():
+def setup(container):
     """Set up Azure storage container and initial configuration"""
     try:
         from ckanext.native_cloud_storage.storage import AzureBlobStorage
