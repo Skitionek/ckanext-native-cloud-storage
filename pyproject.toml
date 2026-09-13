@@ -33,14 +33,9 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "pytest-factoryboy>=2.7.0",
-    "factory-boy>=3.3.0",
     "flake8>=7.3.0",
     "black>=26.5.1",
     "responses>=0.26.2",
-    "tomli>=2.0.1; python_version < '3.11'",
-    "build>=1.2.1",
-    "twine>=5.1.1",
 ]
 
 [project.urls]
