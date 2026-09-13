@@ -67,6 +67,15 @@ class AzureBlobStorage(_UploadBase):
         """
         super().__init__(upload_to, old_filename)
 
+        # CKAN's real ckan.lib.uploader.Upload stores the first positional
+        # arg as ``self.object_type`` (and may perform filesystem side
+        # effects such as creating a local upload directory) rather than
+        # ``self.upload_to``. The lightweight shim used when CKAN isn't
+        # installed does set ``self.upload_to``. Set it explicitly here so
+        # behavior is identical against both the real CKAN base class and
+        # the shim.
+        self.upload_to = upload_to
+
         # Azure Data Lake configuration
         self.account_name = config.get(
             "ckanext.native_cloud_storage.azure.account_name", ""
