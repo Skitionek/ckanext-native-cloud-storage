@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from azure.core.exceptions import AzureError, ResourceNotFoundError
-
 from ckanext.native_cloud_storage.storage import AzureBlobStorage
 
 
@@ -18,9 +17,7 @@ def make_storage(config_overrides=None, upload_to="", old_filename=None):
     """
     values = config_overrides or {}
     with patch("ckanext.native_cloud_storage.storage.config") as mock_config:
-        mock_config.get.side_effect = lambda key, default=None: values.get(
-            key, default
-        )
+        mock_config.get.side_effect = lambda key, default=None: values.get(key, default)
         with patch("ckanext.native_cloud_storage.storage.toolkit") as mock_toolkit:
             mock_toolkit.asbool.side_effect = lambda v, default=False: (
                 v if isinstance(v, bool) else str(v).lower() in ("true", "1", "yes")
@@ -125,16 +122,12 @@ class TestAzureBlobStorage:
         )
 
     @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_client_creation_failure_is_logged_and_reraised(
-        self, mock_service_client
-    ):
+    def test_client_creation_failure_is_logged_and_reraised(self, mock_service_client):
         mock_service_client.from_connection_string.side_effect = AzureError(
             "auth failed"
         )
         storage = make_storage(
-            {
-                "ckanext.native_cloud_storage.azure.connection_string": "bad-conn-str"
-            }
+            {"ckanext.native_cloud_storage.azure.connection_string": "bad-conn-str"}
         )
         with pytest.raises(AzureError, match="auth failed"):
             storage._create_data_lake_service_client()
@@ -200,9 +193,7 @@ class TestAzureBlobStorage:
 
         blob_name = storage._generate_blob_name()
 
-        match = re.match(
-            r"^resources/(\d{8}_\d{6}_\d{6})_test_file\.txt$", blob_name
-        )
+        match = re.match(r"^resources/(\d{8}_\d{6}_\d{6})_test_file\.txt$", blob_name)
         assert match is not None, blob_name
 
     def test_blob_name_generation_without_upload_to(self):
@@ -383,7 +374,9 @@ class TestAzureBlobStorage:
             }
         )
         mock_file_client = Mock()
-        mock_file_client.url = "https://myaccount.dfs.core.windows.net/test-filesystem/resources/test.txt"
+        mock_file_client.url = (
+            "https://myaccount.dfs.core.windows.net/test-filesystem/resources/test.txt"
+        )
         mock_fs_client = Mock()
         mock_fs_client.get_file_client.return_value = mock_file_client
         storage._file_system_client = mock_fs_client
@@ -456,11 +449,14 @@ class TestAzureBlobStorage:
     def test_send_file_event_no_transport_configured_is_noop(self):
         storage = make_storage({})  # no servicebus, no eventhub, no emulator
 
-        with patch(
-            "ckanext.native_cloud_storage.storage.AzureBlobStorage._send_servicebus_event"
-        ) as mock_sb, patch(
-            "ckanext.native_cloud_storage.storage.AzureBlobStorage._send_eventhub_event"
-        ) as mock_eh:
+        with (
+            patch(
+                "ckanext.native_cloud_storage.storage.AzureBlobStorage._send_servicebus_event"
+            ) as mock_sb,
+            patch(
+                "ckanext.native_cloud_storage.storage.AzureBlobStorage._send_eventhub_event"
+            ) as mock_eh,
+        ):
             storage._send_file_event("upload", "resources/test.txt")
 
         mock_sb.assert_not_called()
@@ -505,9 +501,7 @@ class TestAzureBlobStorage:
         self, mock_walk, mock_exists, mock_getsize, mock_open
     ):
         storage = make_storage(self.test_config)
-        mock_walk.return_value = [
-            ("/var/lib/ckan/default/resources", [], ["a.txt"])
-        ]
+        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
         mock_file_client = Mock()
         mock_file_client.get_file_properties.side_effect = ResourceNotFoundError(
             "missing"
@@ -531,9 +525,7 @@ class TestAzureBlobStorage:
         self, mock_walk, mock_exists, mock_getsize
     ):
         storage = make_storage(self.test_config)
-        mock_walk.return_value = [
-            ("/var/lib/ckan/default/resources", [], ["a.txt"])
-        ]
+        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
         mock_file_client = Mock()
         mock_file_client.get_file_properties.return_value = {}  # already exists
         mock_fs_client = Mock()
