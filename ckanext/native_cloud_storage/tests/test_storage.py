@@ -500,6 +500,18 @@ class TestAzureBlobStorage:
 
         assert results == {"processed": 0, "migrated": 0, "errors": 0, "files": []}
 
+    def _migration_storage_with_file(self, mock_config, mock_walk, filename="a.txt"):
+        """Shared setup for migration tests: patch storage_path config and
+        stub os.walk to return a single file under the resources dir."""
+        mock_config.get.side_effect = lambda key, default=None: (
+            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
+        )
+        storage = make_storage(self.test_config)
+        mock_walk.return_value = [
+            ("/var/lib/ckan/default/resources", [], [filename])
+        ]
+        return storage
+
     @patch("builtins.open")
     @patch("os.path.getsize", return_value=42)
     @patch("os.path.exists", return_value=True)
@@ -508,11 +520,7 @@ class TestAzureBlobStorage:
     def test_migration_real_run_uploads_new_files(
         self, mock_config, mock_walk, mock_exists, mock_getsize, mock_open
     ):
-        mock_config.get.side_effect = lambda key, default=None: (
-            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
-        )
-        storage = make_storage(self.test_config)
-        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
+        storage = self._migration_storage_with_file(mock_config, mock_walk)
         mock_file_client = Mock()
         mock_file_client.get_file_properties.side_effect = ResourceNotFoundError(
             "missing"
@@ -536,13 +544,10 @@ class TestAzureBlobStorage:
     def test_migration_real_run_skips_existing_blob(
         self, mock_config, mock_walk, mock_exists, mock_getsize
     ):
-        mock_config.get.side_effect = lambda key, default=None: (
-            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
-        )
-        storage = make_storage(self.test_config)
-        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
+        storage = self._migration_storage_with_file(mock_config, mock_walk)
         mock_file_client = Mock()
         mock_file_client.get_file_properties.return_value = {}  # already exists
+
         mock_fs_client = Mock()
         mock_fs_client.get_file_client.return_value = mock_file_client
         storage._file_system_client = mock_fs_client
