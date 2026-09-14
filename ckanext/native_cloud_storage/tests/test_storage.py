@@ -476,7 +476,14 @@ class TestAzureBlobStorage:
         ]
         storage._file_system_client = Mock()
 
-        with patch("os.path.getsize", return_value=1024):
+        with patch("os.path.getsize", return_value=1024), patch(
+            "ckanext.native_cloud_storage.storage.config"
+        ) as mock_config:
+            mock_config.get.side_effect = lambda key, default=None: (
+                "/var/lib/ckan/default"
+                if key == "ckan.storage_path"
+                else default
+            )
             results = storage.migrate_existing_files(dry_run=True)
 
         assert results["processed"] == 2
@@ -497,9 +504,13 @@ class TestAzureBlobStorage:
     @patch("os.path.getsize", return_value=42)
     @patch("os.path.exists", return_value=True)
     @patch("os.walk")
+    @patch("ckanext.native_cloud_storage.storage.config")
     def test_migration_real_run_uploads_new_files(
-        self, mock_walk, mock_exists, mock_getsize, mock_open
+        self, mock_config, mock_walk, mock_exists, mock_getsize, mock_open
     ):
+        mock_config.get.side_effect = lambda key, default=None: (
+            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
+        )
         storage = make_storage(self.test_config)
         mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
         mock_file_client = Mock()
@@ -521,9 +532,13 @@ class TestAzureBlobStorage:
     @patch("os.path.getsize", return_value=42)
     @patch("os.path.exists", return_value=True)
     @patch("os.walk")
+    @patch("ckanext.native_cloud_storage.storage.config")
     def test_migration_real_run_skips_existing_blob(
-        self, mock_walk, mock_exists, mock_getsize
+        self, mock_config, mock_walk, mock_exists, mock_getsize
     ):
+        mock_config.get.side_effect = lambda key, default=None: (
+            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
+        )
         storage = make_storage(self.test_config)
         mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
         mock_file_client = Mock()
