@@ -66,6 +66,11 @@ class AzureBlobStorage(_UploadBase):
         :param old_filename: Previous filename for updates
         """
         super().__init__(upload_to, old_filename)
+        # CKAN's real ckan.lib.uploader.Upload.__init__ stores this
+        # positional argument as self.object_type, not self.upload_to --
+        # explicitly set it here so both the real CKAN base class and the
+        # test shim expose a consistent self.upload_to attribute.
+        self.upload_to = upload_to
 
         # Azure Data Lake configuration
         self.account_name = config.get(
