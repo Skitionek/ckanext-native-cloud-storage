@@ -476,13 +476,12 @@ class TestAzureBlobStorage:
         ]
         storage._file_system_client = Mock()
 
-        with patch("os.path.getsize", return_value=1024), patch(
-            "ckanext.native_cloud_storage.storage.config"
-        ) as mock_config:
+        with (
+            patch("os.path.getsize", return_value=1024),
+            patch("ckanext.native_cloud_storage.storage.config") as mock_config,
+        ):
             mock_config.get.side_effect = lambda key, default=None: (
-                "/var/lib/ckan/default"
-                if key == "ckan.storage_path"
-                else default
+                "/var/lib/ckan/default" if key == "ckan.storage_path" else default
             )
             results = storage.migrate_existing_files(dry_run=True)
 
@@ -507,9 +506,7 @@ class TestAzureBlobStorage:
             "/var/lib/ckan/default" if key == "ckan.storage_path" else default
         )
         storage = make_storage(self.test_config)
-        mock_walk.return_value = [
-            ("/var/lib/ckan/default/resources", [], [filename])
-        ]
+        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], [filename])]
         return storage
 
     @patch("builtins.open")
