@@ -45,13 +45,11 @@ than silently no-op.
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 import ckan.tests.helpers as helpers
+import pytest
 from ckan.tests import factories
-
 from ckanext.native_cloud_storage.commands import native_cloud_storage
 
 pytestmark = pytest.mark.integration
