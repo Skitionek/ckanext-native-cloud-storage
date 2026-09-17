@@ -466,13 +466,33 @@ class TestAzureBlobStorage:
     # Migration
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _resources_path():
+        """The resources dir migrate_existing_files() derives from config.
+
+        migrate_existing_files() reads the real global ckan.common.config
+        (not the module-level ``config`` patched by make_storage()), so
+        tests must build the expected path from the actual
+        ckan.storage_path in effect (set in test.ini) rather than a
+        hardcoded value -- otherwise this only passes on machines where
+        that hardcoded path happens to exist and be writable.
+        """
+        import os
+
+        from ckan.common import config as real_config
+
+        return os.path.join(
+            real_config.get("ckan.storage_path", "/var/lib/ckan/default"),
+            "resources",
+        )
+
     @patch("os.path.exists")
     @patch("os.walk")
     def test_migration_dry_run(self, mock_walk, mock_exists):
         storage = make_storage(self.test_config)
         mock_exists.return_value = True
         mock_walk.return_value = [
-            ("/var/lib/ckan/default/resources", [], ["test1.txt", "test2.pdf"])
+            (self._resources_path(), [], ["test1.txt", "test2.pdf"])
         ]
         storage._file_system_client = Mock()
 
@@ -499,25 +519,15 @@ class TestAzureBlobStorage:
 
         assert results == {"processed": 0, "migrated": 0, "errors": 0, "files": []}
 
-    def _migration_storage_with_file(self, mock_config, mock_walk, filename="a.txt"):
-        """Shared setup for migration tests: patch storage_path config and
-        stub os.walk to return a single file under the resources dir."""
-        mock_config.get.side_effect = lambda key, default=None: (
-            "/var/lib/ckan/default" if key == "ckan.storage_path" else default
-        )
-        storage = make_storage(self.test_config)
-        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], [filename])]
-        return storage
-
     @patch("builtins.open")
     @patch("os.path.getsize", return_value=42)
     @patch("os.path.exists", return_value=True)
     @patch("os.walk")
-    @patch("ckanext.native_cloud_storage.storage.config")
     def test_migration_real_run_uploads_new_files(
-        self, mock_config, mock_walk, mock_exists, mock_getsize, mock_open
+        self, mock_walk, mock_exists, mock_getsize, mock_open
     ):
-        storage = self._migration_storage_with_file(mock_config, mock_walk)
+        storage = make_storage(self.test_config)
+        mock_walk.return_value = [(self._resources_path(), [], ["a.txt"])]
         mock_file_client = Mock()
         mock_file_client.get_file_properties.side_effect = ResourceNotFoundError(
             "missing"
@@ -537,14 +547,13 @@ class TestAzureBlobStorage:
     @patch("os.path.getsize", return_value=42)
     @patch("os.path.exists", return_value=True)
     @patch("os.walk")
-    @patch("ckanext.native_cloud_storage.storage.config")
     def test_migration_real_run_skips_existing_blob(
-        self, mock_config, mock_walk, mock_exists, mock_getsize
+        self, mock_walk, mock_exists, mock_getsize
     ):
-        storage = self._migration_storage_with_file(mock_config, mock_walk)
+        storage = make_storage(self.test_config)
+        mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
         mock_file_client = Mock()
         mock_file_client.get_file_properties.return_value = {}  # already exists
-
         mock_fs_client = Mock()
         mock_fs_client.get_file_client.return_value = mock_file_client
         storage._file_system_client = mock_fs_client

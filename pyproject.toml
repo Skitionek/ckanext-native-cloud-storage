@@ -33,14 +33,21 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "pytest-factoryboy>=2.7.0",
-    "factory-boy>=3.3.0",
     "flake8>=7.3.0",
     "black>=26.5.1",
     "responses>=0.26.2",
     "tomli>=2.0.1; python_version < '3.11'",
     "build>=1.2.1",
     "twine>=5.1.1",
+    # Needed to run the CKAN-fixture-backed integration tests in
+    # ckanext/native_cloud_storage/tests/test_integration.py. These rely
+    # on CKAN's own bundled pytest plugin (ckan.tests.pytest_ckan), which
+    # in turn needs pytest-factoryboy -- and pytest-factoryboy pulls in
+    # `inflection` as a transitive dependency that is not always resolved
+    # automatically; pin it explicitly to avoid
+    # `ModuleNotFoundError: No module named 'inflection'` at collection time.
+    "pytest-factoryboy>=2.8.1",
+    "inflection>=0.5.1",
 ]
 
 [project.urls]
@@ -63,6 +70,7 @@ include-package-data = true
 testpaths = ["ckanext/native_cloud_storage/tests"]
 markers = [
     "slow: marks tests that build/install the package (deselect with -m 'not slow')",
+    "integration: CKAN-fixture-backed tests needing a real CKAN app + Postgres/Solr/Redis (see ckanext/native_cloud_storage/tests/test_integration.py and test.ini for setup/run instructions)",
 ]
 
 [tool.black]
