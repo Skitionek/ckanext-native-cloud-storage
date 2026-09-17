@@ -1,5 +1,10 @@
 # Dependabot configuration
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# `groups` below exist to keep tightly-coupled dependencies in a single PR.
+# Packages in the same group pin each other or are released in lockstep, so
+# bumping one alone produces a broken build or a resolver conflict.
+# Add a package to an existing group rather than letting it be bumped solo.
 
 version: 2
 updates:
@@ -10,6 +15,12 @@ updates:
       interval: "daily"
     commit-message:
       prefix: "ci"
+    groups:
+      # init/analyze/upload-sarif are three entrypoints of one action; they
+      # must run at the same version across codeql.yml and lint.yml.
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
 
   # Maintain Python dependencies
   - package-ecosystem: "pip"
@@ -18,3 +29,16 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "build"
+    groups:
+      # The azure-* SDK packages all resolve against azure-core and share its
+      # credential/pipeline protocol; bumping one across a major drags the
+      # others with it, so they have to move together.
+      azure:
+        patterns:
+          - "azure-*"
+      # pytest plugins declare a supported pytest range; a solo pytest major
+      # bump leaves pytest-cov uninstallable.
+      pytest:
+        patterns:
+          - "pytest"
+          - "pytest-*"
