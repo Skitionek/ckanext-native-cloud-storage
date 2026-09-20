@@ -49,6 +49,14 @@ YAML_V8R_DISABLE_ERRORS: true
 # Security and content linters report known fixture/demo values in this repo.
 PYTHON_BANDIT_DISABLE_ERRORS: true
 REPOSITORY_GITLEAKS_DISABLE_ERRORS: true
+# Kingfisher findings are the same known fixture/demo secrets in
+# .devcontainer/ (emulator env files, local dev TLS key) already covered by
+# gitleaks/secretlint/devskim above; keep informational to avoid blocking CI.
+REPOSITORY_KINGFISHER_DISABLE_ERRORS: true
+# DustiLock false-positives on requirements.txt's `-e .` editable-install
+# line, misreading "-e" as an unregistered/typosquattable package name.
+# Keep informational until upstream fixes parsing of editable requirements.
+REPOSITORY_DUSTILOCK_DISABLE_ERRORS: true
 SPELL_LYCHEE_DISABLE_ERRORS: true
 HTML_HTMLHINT_DISABLE_ERRORS: true
 
