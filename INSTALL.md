@@ -12,6 +12,7 @@ This guide provides step-by-step instructions for installing and configuring the
 > the single source of truth for these constraints. A pytest regression
 > check (`ckanext/native_cloud_storage/tests/test_packaging_metadata.py`)
 > fails CI if this document drifts from `pyproject.toml`.
+
 - Docker (for development with emulators)
 - Azure Storage Account (for production) or Azure Storage Emulator (for development)
 
