@@ -30,6 +30,10 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
+The extension depends on [azure-data-lake-fs](https://github.com/Skitionek/azure-data-lake-fs), which is not on PyPI
+yet and is installed from GitHub at the commit pinned in `pyproject.toml`, so `git` must be available where you run
+`pip install`.
+
 ### 2. Development Setup with Emulators
 
 For development, use the provided Docker Compose setup:

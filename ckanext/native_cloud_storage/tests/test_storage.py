@@ -1,10 +1,12 @@
 import json
 import re
 from io import BytesIO
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, create_autospec, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from azure.core.exceptions import AzureError, ResourceNotFoundError
+from azure.core.exceptions import AzureError
+from azure_data_lake_fs import AzureDataLakeFsClient, TransferContext
 from ckanext.native_cloud_storage.storage import AzureBlobStorage
 
 
@@ -24,6 +26,21 @@ def make_storage(config_overrides=None, upload_to="", old_filename=None):
             )
             storage = AzureBlobStorage(upload_to=upload_to, old_filename=old_filename)
     return storage
+
+
+def fake_client():
+    """An azure-data-lake-fs client double that enforces the real signatures."""
+    client = create_autospec(AzureDataLakeFsClient, instance=True)
+    client.open_download_context.side_effect = lambda path: TransferContext(
+        operation="download", path=path, sas_url=f"https://signed.test/{path}?sig=x"
+    )
+    client.url_for.side_effect = lambda path: f"https://unsigned.test/{path}"
+    return client
+
+
+def with_fake_client(storage):
+    storage._client = fake_client()
+    return storage._client
 
 
 class TestAzureBlobStorage:
@@ -59,109 +76,122 @@ class TestAzureBlobStorage:
         """No emulator, no connection string, no account name/key configured."""
         storage = make_storage({})
         with pytest.raises(ValueError, match="Azure Storage configuration"):
-            storage._create_data_lake_service_client()
+            storage._build_config()
 
-    @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_connection_string_auth_uses_real_value(self, mock_service_client):
-        conn_str = "DefaultEndpointsProtocol=https;AccountName=foo;AccountKey=bar;"
-        storage = make_storage(
-            {"ckanext.native_cloud_storage.azure.connection_string": conn_str}
+    def test_connection_string_auth_uses_real_value(self):
+        conn_str = (
+            "DefaultEndpointsProtocol=https;AccountName=foo;AccountKey=YmFy;"
+            "EndpointSuffix=core.windows.net"
         )
-        storage._create_data_lake_service_client()
+        storage = make_storage(
+            {
+                "ckanext.native_cloud_storage.azure.connection_string": conn_str,
+                "ckanext.native_cloud_storage.azure.file_system_name": "fs",
+            }
+        )
 
-        mock_service_client.from_connection_string.assert_called_once_with(conn_str)
+        config = storage._build_config()
 
-    @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_emulator_mode_takes_precedence_over_connection_string(
-        self, mock_service_client
-    ):
+        assert config.account_name == "foo"
+        assert config.account_key == "YmFy"
+        assert config.file_system_name == "fs"
+        assert config.account_url == "https://foo.dfs.core.windows.net"
+        assert config.sas_policy.expiry_minutes == 60
+
+    def test_emulator_mode_takes_precedence_over_connection_string(self):
         storage = make_storage(
             {
                 "ckanext.native_cloud_storage.azure.use_emulator": "true",
                 "ckanext.native_cloud_storage.azure.connection_string": "should-be-ignored",
             }
         )
-        storage._create_data_lake_service_client()
 
-        called_conn_str = mock_service_client.from_connection_string.call_args[0][0]
-        assert "devstoreaccount1" in called_conn_str
-        assert called_conn_str != "should-be-ignored"
+        config = storage._build_config()
 
-    @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_account_key_auth_uses_real_account_and_key(self, mock_service_client):
+        assert config.account_name == "devstoreaccount1"
+        assert config.account_url == "http://127.0.0.1:10000/devstoreaccount1"
+
+    def test_account_key_auth_uses_real_account_and_key(self):
         storage = make_storage(
             {
                 "ckanext.native_cloud_storage.azure.account_name": "myaccount",
                 "ckanext.native_cloud_storage.azure.account_key": "secret-key",
             }
         )
-        storage._create_data_lake_service_client()
 
-        mock_service_client.assert_called_once_with(
-            account_url="https://myaccount.dfs.core.windows.net",
-            credential="secret-key",
-        )
+        config = storage._build_config()
+
+        assert config.account_name == "myaccount"
+        assert config.account_key == "secret-key"
+        assert config.credential is None
+        assert config.account_url == "https://myaccount.dfs.core.windows.net"
 
     @patch("ckanext.native_cloud_storage.storage.DefaultAzureCredential")
-    @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_account_name_only_uses_managed_identity(
-        self, mock_service_client, mock_default_credential
-    ):
+    def test_account_name_only_uses_managed_identity(self, mock_default_credential):
         mock_credential_instance = Mock()
         mock_default_credential.return_value = mock_credential_instance
 
         storage = make_storage(
             {"ckanext.native_cloud_storage.azure.account_name": "myaccount"}
         )
-        storage._create_data_lake_service_client()
+        config = storage._build_config()
 
         mock_default_credential.assert_called_once()
-        mock_service_client.assert_called_once_with(
-            account_url="https://myaccount.dfs.core.windows.net",
-            credential=mock_credential_instance,
-        )
+        assert config.account_key is None
+        assert config.credential is mock_credential_instance
 
-    @patch("ckanext.native_cloud_storage.storage.DataLakeServiceClient")
-    def test_client_creation_failure_is_logged_and_reraised(self, mock_service_client):
-        mock_service_client.from_connection_string.side_effect = AzureError(
-            "auth failed"
-        )
+    @patch("ckanext.native_cloud_storage.storage.AzureDataLakeFsClient.from_azure")
+    def test_client_is_built_once_and_ensures_file_system(self, mock_from_azure):
+        client = fake_client()
+        mock_from_azure.return_value = client
+        storage = make_storage(self.test_config)
+
+        first = storage.client
+        second = storage.client
+
+        assert first is client
+        assert second is client
+        mock_from_azure.assert_called_once()
+        config = mock_from_azure.call_args.kwargs["config"]
+        assert config.file_system_name == "test-filesystem"
+        assert mock_from_azure.call_args.kwargs["service_bus_settings"] is None
+        client.ensure_file_system.assert_called_once_with()
+
+    @patch("ckanext.native_cloud_storage.storage.AzureDataLakeFsClient.from_azure")
+    def test_client_gets_service_bus_settings_when_configured(self, mock_from_azure):
+        mock_from_azure.return_value = fake_client()
         storage = make_storage(
-            {"ckanext.native_cloud_storage.azure.connection_string": "bad-conn-str"}
+            {
+                **self.test_config,
+                "ckanext.native_cloud_storage.azure.servicebus_connection_string": "sb-conn-str",
+            }
         )
+
+        storage.client
+
+        settings = mock_from_azure.call_args.kwargs["service_bus_settings"]
+        assert settings.connection_string == "sb-conn-str"
+        assert settings.queue_name == "test-file-events"
+
+    @patch("ckanext.native_cloud_storage.storage.AzureDataLakeFsClient.from_azure")
+    def test_client_creation_failure_is_logged_and_reraised(self, mock_from_azure):
+        mock_from_azure.side_effect = AzureError("auth failed")
+        storage = make_storage(self.test_config)
+
         with pytest.raises(AzureError, match="auth failed"):
-            storage._create_data_lake_service_client()
+            storage.client
+        assert storage._client is None
 
-    def test_file_system_client_is_lazily_cached(self):
+    @patch("ckanext.native_cloud_storage.storage.AzureDataLakeFsClient.from_azure")
+    def test_client_is_not_cached_when_file_system_check_fails(self, mock_from_azure):
+        client = fake_client()
+        client.ensure_file_system.side_effect = AzureError("down")
+        mock_from_azure.return_value = client
         storage = make_storage(self.test_config)
-        fake_service_client = Mock()
-        fake_fs_client = Mock()
-        fake_service_client.get_file_system_client.return_value = fake_fs_client
-        fake_fs_client.get_file_system_properties.return_value = {}
-        storage._service_client = fake_service_client
 
-        first = storage.file_system_client
-        second = storage.file_system_client
-
-        assert first is fake_fs_client
-        assert second is fake_fs_client
-        fake_service_client.get_file_system_client.assert_called_once_with(
-            file_system="test-filesystem"
-        )
-
-    def test_file_system_client_creates_missing_file_system(self):
-        storage = make_storage(self.test_config)
-        fake_service_client = Mock()
-        fake_fs_client = Mock()
-        fake_service_client.get_file_system_client.return_value = fake_fs_client
-        fake_fs_client.get_file_system_properties.side_effect = ResourceNotFoundError(
-            "not found"
-        )
-        storage._service_client = fake_service_client
-
-        storage.file_system_client
-
-        fake_fs_client.create_file_system.assert_called_once()
+        with pytest.raises(AzureError, match="down"):
+            storage.client
+        assert storage._client is None
 
     # ------------------------------------------------------------------
     # test_connection
@@ -169,17 +199,15 @@ class TestAzureBlobStorage:
 
     def test_connection_test_success(self):
         storage = make_storage(self.test_config)
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_system_properties.return_value = True
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
 
         assert storage.test_connection() is True
+        client.ensure_file_system.assert_called_once_with()
 
     def test_connection_test_failure_returns_false(self):
         storage = make_storage(self.test_config)
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_system_properties.side_effect = AzureError("down")
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
+        client.ensure_file_system.side_effect = AzureError("down")
 
         assert storage.test_connection() is False
 
@@ -238,47 +266,35 @@ class TestAzureBlobStorage:
     def test_upload_noop_when_no_filename(self):
         storage = make_storage(self.test_config)
         storage.filename = None
-        storage._file_system_client = Mock()
+        client = with_fake_client(storage)
 
         storage.upload()
 
-        storage._file_system_client.get_file_client.assert_not_called()
+        client.upload.assert_not_called()
 
-    def test_upload_passes_real_content_and_metadata_to_sdk(self):
+    def test_upload_passes_real_content_and_metadata_to_client(self):
         storage = make_storage(self.test_config, upload_to="resources")
         mock_file = Mock()
         mock_file.file = BytesIO(b"hello world")
         storage.upload_field_storage = mock_file
         storage.filename = "test file.txt"
-
-        mock_file_client = Mock()
-        mock_file_client.url = "http://emulator/test-filesystem/blob"
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
 
         storage.upload()
 
-        # Real path was requested from the real system client
-        requested_path = mock_fs_client.get_file_client.call_args[0][0]
+        (requested_path, data), kwargs = client.upload.call_args
         assert requested_path.startswith("resources/")
         assert requested_path.endswith("test_file.txt")
+        assert data == b"hello world"
+        assert kwargs["overwrite"] is True
+        assert kwargs["metadata"]["original_filename"] == "test file.txt"
+        assert kwargs["metadata"]["ckan_resource"] == "true"
+        # content type comes from the real mimetype of the filename
+        assert kwargs["content_type"] == "text/plain"
 
-        upload_kwargs = mock_file_client.upload_data.call_args.kwargs
-        assert upload_kwargs["data"] == b"hello world"
-        assert upload_kwargs["overwrite"] is True
-        assert upload_kwargs["metadata"]["original_filename"] == "test file.txt"
-        assert upload_kwargs["metadata"]["ckan_resource"] == "true"
-
-        # content-type header set from the real mimetype of the filename
-        content_settings = mock_file_client.set_http_headers.call_args.kwargs[
-            "content_settings"
-        ]
-        assert content_settings.content_type == "text/plain"
-
-        # filename/url are updated to the generated blob path
+        # filename/url are updated to the generated path and its signed URL
         assert storage.filename == requested_path
-        assert storage.url == mock_file_client.url
+        assert storage.url == f"https://signed.test/{requested_path}?sig=x"
 
     def test_upload_reads_from_field_storage_without_file_attr(self):
         storage = make_storage(self.test_config)
@@ -286,53 +302,48 @@ class TestAzureBlobStorage:
         raw.read.return_value = b"raw bytes"
         storage.upload_field_storage = raw
         storage.filename = "raw.bin"
-
-        mock_file_client = Mock()
-        mock_file_client.url = "http://emulator/raw"
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
 
         storage.upload()
 
         raw.read.assert_called_once()
-        assert mock_file_client.upload_data.call_args.kwargs["data"] == b"raw bytes"
+        assert client.upload.call_args.args[1] == b"raw bytes"
+        assert client.upload.call_args.kwargs["content_type"] == (
+            "application/octet-stream"
+        )
 
-    def test_upload_reraises_on_sdk_failure(self):
+    def test_upload_reraises_on_storage_failure(self):
         storage = make_storage(self.test_config)
         mock_file = Mock()
         mock_file.file = BytesIO(b"data")
         storage.upload_field_storage = mock_file
         storage.filename = "test.txt"
-
-        mock_file_client = Mock()
-        mock_file_client.upload_data.side_effect = AzureError("upload rejected")
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
+        client.upload.side_effect = AzureError("upload rejected")
 
         with pytest.raises(AzureError, match="upload rejected"):
             storage.upload()
+        client.publish_change.assert_not_called()
 
-    def test_upload_tolerates_set_http_headers_not_supported(self):
-        """Emulators may not support set_http_headers; upload must still succeed."""
-        storage = make_storage(self.test_config)
+    def test_upload_publishes_file_event(self):
+        storage = make_storage(
+            {
+                **self.test_config,
+                "ckanext.native_cloud_storage.azure.servicebus_connection_string": "sb-conn-str",
+            }
+        )
         mock_file = Mock()
         mock_file.file = BytesIO(b"data")
         storage.upload_field_storage = mock_file
         storage.filename = "test.txt"
+        client = with_fake_client(storage)
 
-        mock_file_client = Mock()
-        mock_file_client.url = "http://emulator/test.txt"
-        mock_file_client.set_http_headers.side_effect = AzureError("not supported")
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        storage.upload()
 
-        storage.upload()  # should not raise
-
-        mock_file_client.upload_data.assert_called_once()
-        assert storage.filename is not None
+        (event,) = client.publish_change.call_args.args
+        assert event["event_type"] == "upload"
+        assert event["file_path"] == storage.filename
+        assert event["container_name"] == "test-filesystem"
 
     # ------------------------------------------------------------------
     # Blob URL / SAS generation
@@ -340,7 +351,7 @@ class TestAzureBlobStorage:
 
     def test_get_blob_url_rejects_empty_or_directory_path(self):
         storage = make_storage(self.test_config)
-        storage._file_system_client = Mock()
+        client = with_fake_client(storage)
 
         with pytest.raises(ValueError):
             storage._get_blob_url("")
@@ -348,48 +359,63 @@ class TestAzureBlobStorage:
         with pytest.raises(ValueError):
             storage._get_blob_url("resources/")
 
-    def test_get_blob_url_emulator_returns_plain_file_client_url(self):
-        storage = make_storage(self.test_config)  # use_emulator: true
-        mock_file_client = Mock()
-        mock_file_client.url = "http://127.0.0.1:10000/devstoreaccount1/blob"
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client.open_download_context.assert_not_called()
+
+    def test_get_blob_url_returns_signed_url(self):
+        storage = make_storage(self.test_config)
+        client = with_fake_client(storage)
+
+        url = storage._get_blob_url("/resources/test.txt")
+
+        assert url == "https://signed.test/resources/test.txt?sig=x"
+        client.open_download_context.assert_called_once_with("resources/test.txt")
+
+    def test_get_blob_url_falls_back_to_unsigned_url_when_signing_fails(self):
+        storage = make_storage(self.test_config)
+        client = with_fake_client(storage)
+        client.open_download_context.side_effect = AzureError("no delegation key")
 
         url = storage._get_blob_url("resources/test.txt")
 
-        assert url == mock_file_client.url
-        mock_fs_client.get_file_client.assert_called_once_with("resources/test.txt")
+        assert url == "https://unsigned.test/resources/test.txt"
 
-    @patch("ckanext.native_cloud_storage.storage.generate_file_sas")
-    def test_get_blob_url_non_emulator_with_account_key_generates_sas(
-        self, mock_generate_sas
+    @pytest.mark.parametrize(
+        ("config_overrides", "expected_base"),
+        [
+            (
+                {
+                    "ckanext.native_cloud_storage.azure.account_name": "myaccount",
+                    "ckanext.native_cloud_storage.azure.account_key": "c2VjcmV0LWtleQ==",
+                    "ckanext.native_cloud_storage.azure.file_system_name": "test-filesystem",
+                },
+                "https://myaccount.dfs.core.windows.net/test-filesystem/resources/test.txt",
+            ),
+            (
+                {
+                    "ckanext.native_cloud_storage.azure.use_emulator": "true",
+                    "ckanext.native_cloud_storage.azure.file_system_name": "test-filesystem",
+                },
+                "http://127.0.0.1:10000/devstoreaccount1/test-filesystem/resources/test.txt",
+            ),
+        ],
+    )
+    def test_get_blob_url_signs_read_only_sas_with_account_key(
+        self, config_overrides, expected_base
     ):
-        mock_generate_sas.return_value = "sas-token-value"
-        storage = make_storage(
-            {
-                "ckanext.native_cloud_storage.azure.account_name": "myaccount",
-                "ckanext.native_cloud_storage.azure.account_key": "secret-key",
-                "ckanext.native_cloud_storage.azure.file_system_name": "test-filesystem",
-            }
+        """Real azure-data-lake-fs signing (no network) for key-based auth modes."""
+        storage = make_storage(config_overrides)
+        storage._client = AzureDataLakeFsClient.from_azure(
+            config=storage._build_config()
         )
-        mock_file_client = Mock()
-        mock_file_client.url = (
-            "https://myaccount.dfs.core.windows.net/test-filesystem/resources/test.txt"
-        )
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
 
         url = storage._get_blob_url("resources/test.txt")
 
-        assert url == f"{mock_file_client.url}?sas-token-value"
-        sas_kwargs = mock_generate_sas.call_args.kwargs
-        assert sas_kwargs["account_name"] == "myaccount"
-        assert sas_kwargs["file_system_name"] == "test-filesystem"
-        assert sas_kwargs["directory_name"] == "resources"
-        assert sas_kwargs["file_name"] == "test.txt"
-        assert sas_kwargs["credential"] == "secret-key"
+        parts = urlsplit(url)
+        query = parse_qs(parts.query)
+        assert f"{parts.scheme}://{parts.netloc}{parts.path}" == expected_base
+        assert query["sp"] == ["r"]
+        assert "sig" in query
+        assert "se" in query
 
     # ------------------------------------------------------------------
     # File events (Service Bus / Event Hub)
@@ -402,35 +428,16 @@ class TestAzureBlobStorage:
                 "ckanext.native_cloud_storage.azure.servicebus_queue_name": "queue-1",
             }
         )
+        client = with_fake_client(storage)
 
-        mock_sender = MagicMock()
-        mock_queue_cm = MagicMock()
-        mock_queue_cm.__enter__.return_value = mock_sender
-        mock_client_instance = MagicMock()
-        mock_client_instance.get_queue_sender.return_value = mock_queue_cm
-        mock_client_cm = MagicMock()
-        mock_client_cm.__enter__.return_value = mock_client_instance
+        storage._send_file_event("upload", "resources/test.txt")
 
-        with patch(
-            "azure.servicebus.ServiceBusClient.from_connection_string",
-            return_value=mock_client_cm,
-        ) as mock_from_conn:
-            storage._send_file_event("upload", "resources/test.txt")
-
-        mock_from_conn.assert_called_once_with("sb-conn-str")
-        mock_client_instance.get_queue_sender.assert_called_once_with(
-            queue_name="queue-1"
-        )
-        mock_sender.send_messages.assert_called_once()
-        (sent_message,) = mock_sender.send_messages.call_args[0]
-        body_chunks = list(sent_message.body)
-        raw_body = b"".join(
-            chunk if isinstance(chunk, bytes) else chunk.encode("utf-8")
-            for chunk in body_chunks
-        )
-        payload = json.loads(raw_body)
+        (payload,) = client.publish_change.call_args.args
         assert payload["event_type"] == "upload"
         assert payload["file_path"] == "resources/test.txt"
+        assert payload["blob_name"] == "resources/test.txt"
+        assert payload["source"] == "ckan_native_cloud_storage"
+        json.dumps(payload)  # must stay JSON-serializable for the queue
 
     def test_send_file_event_swallows_servicebus_errors(self):
         storage = make_storage(
@@ -438,13 +445,11 @@ class TestAzureBlobStorage:
                 "ckanext.native_cloud_storage.azure.servicebus_connection_string": "sb-conn-str"
             }
         )
+        client = with_fake_client(storage)
+        client.publish_change.side_effect = AzureError("bus unreachable")
 
-        with patch(
-            "azure.servicebus.ServiceBusClient.from_connection_string",
-            side_effect=AzureError("bus unreachable"),
-        ):
-            # Must not raise -- file events are best-effort.
-            storage._send_file_event("upload", "resources/test.txt")
+        # Must not raise -- file events are best-effort.
+        storage._send_file_event("upload", "resources/test.txt")
 
     def test_send_file_event_no_transport_configured_is_noop(self):
         storage = make_storage({})  # no servicebus, no eventhub, no emulator
@@ -494,7 +499,7 @@ class TestAzureBlobStorage:
         mock_walk.return_value = [
             (self._resources_path(), [], ["test1.txt", "test2.pdf"])
         ]
-        storage._file_system_client = Mock()
+        client = with_fake_client(storage)
 
         with (
             patch("os.path.getsize", return_value=1024),
@@ -508,7 +513,8 @@ class TestAzureBlobStorage:
         assert results["processed"] == 2
         assert results["migrated"] == 0
         assert len(results["files"]) == 2
-        storage._file_system_client.get_file_client.assert_not_called()
+        client.exists.assert_not_called()
+        client.upload.assert_not_called()
 
     @patch("os.path.exists")
     def test_migration_missing_resources_directory_returns_empty(self, mock_exists):
@@ -528,19 +534,18 @@ class TestAzureBlobStorage:
     ):
         storage = make_storage(self.test_config)
         mock_walk.return_value = [(self._resources_path(), [], ["a.txt"])]
-        mock_file_client = Mock()
-        mock_file_client.get_file_properties.side_effect = ResourceNotFoundError(
-            "missing"
-        )
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
+        client.exists.return_value = False
 
         results = storage.migrate_existing_files(dry_run=False)
 
-        mock_fs_client.get_file_client.assert_called_once_with("migrated/a.txt")
-        mock_file_client.upload_data.assert_called_once()
-        assert mock_file_client.upload_data.call_args.kwargs["overwrite"] is False
+        client.exists.assert_called_once_with("migrated/a.txt")
+        client.upload.assert_called_once()
+        (path, data), kwargs = client.upload.call_args
+        assert path == "migrated/a.txt"
+        assert data is mock_open.return_value.__enter__.return_value
+        assert kwargs["overwrite"] is False
+        assert kwargs["metadata"]["original_path"] == "a.txt"
         assert results["migrated"] == 1
         assert results["files"][0]["blob_name"] == "migrated/a.txt"
 
@@ -552,15 +557,12 @@ class TestAzureBlobStorage:
     ):
         storage = make_storage(self.test_config)
         mock_walk.return_value = [("/var/lib/ckan/default/resources", [], ["a.txt"])]
-        mock_file_client = Mock()
-        mock_file_client.get_file_properties.return_value = {}  # already exists
-        mock_fs_client = Mock()
-        mock_fs_client.get_file_client.return_value = mock_file_client
-        storage._file_system_client = mock_fs_client
+        client = with_fake_client(storage)
+        client.exists.return_value = True
 
         with patch("builtins.open", Mock()):
             results = storage.migrate_existing_files(dry_run=False)
 
-        mock_file_client.upload_data.assert_not_called()
+        client.upload.assert_not_called()
         assert results["migrated"] == 0
         assert results["processed"] == 1

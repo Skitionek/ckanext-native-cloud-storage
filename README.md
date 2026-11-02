@@ -200,7 +200,9 @@ pytest --cov=ckanext.native_cloud_storage ckanext/native_cloud_storage/tests/
 The extension consists of:
 
 - **Plugin (`plugin.py`)**: Main CKAN plugin implementing IUploader and IActions
-- **Storage (`storage.py`)**: Azure Data Lake Storage Gen2 implementation with Service Bus Queue integration
+- **Storage (`storage.py`)**: CKAN uploader for Azure Data Lake Storage Gen2 with Service Bus Queue integration. All
+  Data Lake and Service Bus access (client setup, uploads, SAS signing, event publishing) goes through
+  [azure-data-lake-fs](https://github.com/Skitionek/azure-data-lake-fs); this extension holds only the CKAN-specific parts
 - **Tests**: Comprehensive test suite with mocking for Azure services
 - **Docker Compose**: Development environment with emulators
 
