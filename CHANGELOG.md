@@ -22,11 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- All Azure Data Lake and Service Bus access now goes through [azure-data-lake-fs](https://github.com/Skitionek/azure-data-lake-fs) (client setup, file-system bootstrap, uploads, SAS signing, file-event publishing) instead of calling the Azure SDKs directly; the direct `azure-storage-file-datalake` and `azure-servicebus` dependencies are replaced by `azure-data-lake-fs`, pinned to a Git commit until it is released
-- File URLs are now SAS-signed in emulator mode and in connection-string mode too (previously emulator mode returned unsigned URLs, which Azurite rejects, and connection-string mode fell back to unsigned URLs)
-- The content type is set as part of the upload instead of a separate best-effort request
-- Connection strings must include `AccountName` and `AccountKey`; SAS-only and `UseDevelopmentStorage=true` connection strings are no longer accepted (use `use_emulator = true` for Azurite)
-- Removed the SDK-level `data_lake_service_client`, `file_system_client`, `blob_service_client` and `container_client` attributes from `AzureBlobStorage`; use `AzureBlobStorage.client` (an `AzureDataLakeFsClient`)
+- All Azure Data Lake and Service Bus access now goes through [azure-data-lake-fs](https://github.com/Skitionek/azure-data-lake-fs) (client setup, file-system bootstrap, uploads, SAS signing, file-event publishing) instead of calling the Azure SDKs directly; the direct `azure-storage-file-datalake` and `azure-servicebus` dependencies are replaced by `azure-data-lake-fs`, pinned to a Git commit until it is released ([#100])
+- File URLs are now SAS-signed in emulator mode and in connection-string mode too (previously emulator mode returned unsigned URLs, which Azurite rejects, and connection-string mode fell back to unsigned URLs) ([#100])
+- The content type is set as part of the upload instead of a separate best-effort request ([#100])
+- Connection strings must include `AccountName` and `AccountKey`; SAS-only and `UseDevelopmentStorage=true` connection strings are no longer accepted (use `use_emulator = true` for Azurite) ([#100])
+- Removed the SDK-level `data_lake_service_client`, `file_system_client`, `blob_service_client` and `container_client` attributes from `AzureBlobStorage`; use `AzureBlobStorage.client` (an `AzureDataLakeFsClient`) ([#100])
 - Migrated file storage from Azure Blob Storage APIs to Azure Data Lake Storage Gen2 filesystem APIs while preserving CKAN uploader compatibility.
 - Switched primary file-event notification configuration to Azure Service Bus Queue settings, with Event Hub fallback for backward compatibility.
 - Raised the project Python baseline to 3.10 in package metadata and installation docs.
@@ -38,3 +38,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Python lint issues by applying Black formatting, cleaning unused imports/variables, and adding repository Flake8 settings.
 
 [Unreleased]: https://github.com/Skitionek/ckanext-native-cloud-storage
+[#100]: https://github.com/Skitionek/ckanext-native-cloud-storage/pull/100
