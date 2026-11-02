@@ -385,7 +385,7 @@ class TestAzureBlobStorage:
             (
                 {
                     "ckanext.native_cloud_storage.azure.account_name": "myaccount",
-                    "ckanext.native_cloud_storage.azure.account_key": "c2VjcmV0LWtleQ==",
+                    "ckanext.native_cloud_storage.azure.account_key": "a2V5",  # b64 "key"
                     "ckanext.native_cloud_storage.azure.file_system_name": "test-filesystem",
                 },
                 "https://myaccount.dfs.core.windows.net/test-filesystem/resources/test.txt",

@@ -26,7 +26,7 @@ dependencies = [
     # All Data Lake and Service Bus access goes through azure-data-lake-fs,
     # which owns the Azure SDK dependencies. It is not on PyPI yet, so it is
     # pinned to a commit; switch to a release once one is tagged.
-    "azure-data-lake-fs @ git+https://github.com/Skitionek/azure-data-lake-fs.git@483f6c170bf39d014aa7500bebba787b1255de20",
+    "azure-data-lake-fs @ git+https://github.com/Skitionek/azure-data-lake-fs.git@805993551ff0b7f2d73e3eeeb7335fdbba593fc7",
     "azure-identity>=1.25.3,<2.0.0",
     "azure-core>=1.41.0",
 ]
