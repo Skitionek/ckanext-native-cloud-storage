@@ -2,15 +2,14 @@ import json
 import logging
 import mimetypes
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-from azure.core.exceptions import AzureError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
-from azure.storage.filedatalake import (
-    ContentSettings,
-    DataLakeServiceClient,
-    FileSasPermissions,
-    generate_file_sas,
+from azure_data_lake_fs import (
+    AzureDataLakeFsClient,
+    AzureDataLakeFsConfig,
+    SasPolicy,
+    ServiceBusSettings,
 )
 
 # Allow importing without a full CKAN installation (e.g. for unit tests)
@@ -49,6 +48,16 @@ except ImportError:
     toolkit = _MockToolkit()  # type: ignore[assignment]
 
 log = logging.getLogger(__name__)
+
+# Well-known development account of the Azurite storage emulator.
+EMULATOR_CONNECTION_STRING = (
+    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
+    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+    "K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+)
+
+# Read-only SAS URLs handed out for uploaded files stay valid for an hour.
+SAS_POLICY = SasPolicy(expiry_minutes=60, download_permissions="r")
 
 
 class AzureBlobStorage(_UploadBase):
@@ -121,83 +130,66 @@ class AzureBlobStorage(_UploadBase):
             "ckanext.native_cloud_storage.azure.eventhub_name", "ckan-file-events"
         )
 
-        self._service_client = None
-        self._file_system_client = None
+        self._client = None
 
     @property
-    def data_lake_service_client(self):
-        """Lazy initialization of Azure Data Lake Service Client."""
-        if self._service_client is None:
-            self._service_client = self._create_data_lake_service_client()
-        return self._service_client
-
-    @property
-    def file_system_client(self):
-        """Lazy initialization of Azure Data Lake FileSystem client."""
-        if self._file_system_client is None:
-            self._file_system_client = (
-                self.data_lake_service_client.get_file_system_client(
-                    file_system=self.file_system_name
+    def client(self):
+        """Lazily built azure-data-lake-fs client; ensures the file system exists."""
+        if self._client is None:
+            try:
+                client = AzureDataLakeFsClient.from_azure(
+                    config=self._build_config(),
+                    service_bus_settings=self._build_service_bus_settings(),
                 )
+            except Exception as e:
+                log.error(f"Failed to create Azure Data Lake client: {e}")
+                raise
+            client.ensure_file_system()
+            self._client = client
+        return self._client
+
+    def _build_config(self):
+        """Build the azure-data-lake-fs config for the configured auth mode."""
+        if self.use_emulator:
+            log.info("Using Azure Storage Emulator")
+            return AzureDataLakeFsConfig.from_connection_string(
+                EMULATOR_CONNECTION_STRING,
+                self.file_system_name,
+                sas_policy=SAS_POLICY,
             )
-            self._ensure_file_system_exists()
-        return self._file_system_client
+        if self.connection_string:
+            return AzureDataLakeFsConfig.from_connection_string(
+                self.connection_string,
+                self.file_system_name,
+                sas_policy=SAS_POLICY,
+            )
+        if self.account_name and self.account_key:
+            return AzureDataLakeFsConfig(
+                account_name=self.account_name,
+                file_system_name=self.file_system_name,
+                account_key=self.account_key,
+                sas_policy=SAS_POLICY,
+            )
+        if self.account_name:
+            return AzureDataLakeFsConfig(
+                account_name=self.account_name,
+                file_system_name=self.file_system_name,
+                credential=DefaultAzureCredential(),
+                sas_policy=SAS_POLICY,
+            )
+        raise ValueError(
+            "Azure Storage configuration is incomplete. Please provide either "
+            "connection_string, account_name with account_key, or account_name "
+            "for managed identity."
+        )
 
-    @property
-    def blob_service_client(self):
-        """Compatibility alias for older tests/callers."""
-        return self.data_lake_service_client
-
-    @property
-    def container_client(self):
-        """Compatibility alias for older tests/callers."""
-        return self.file_system_client
-
-    def _create_data_lake_service_client(self):
-        """Create Azure Data Lake Service Client with appropriate authentication."""
-        try:
-            if self.use_emulator:
-                # Use development storage emulator (Azurite).
-                connection_string = (
-                    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
-                    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-                    "K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-                )
-                log.info("Using Azure Storage Emulator")
-                return DataLakeServiceClient.from_connection_string(connection_string)
-            elif self.connection_string:
-                return DataLakeServiceClient.from_connection_string(
-                    self.connection_string
-                )
-            elif self.account_name and self.account_key:
-                return DataLakeServiceClient(
-                    account_url=f"https://{self.account_name}.dfs.core.windows.net",
-                    credential=self.account_key,
-                )
-            elif self.account_name:
-                credential = DefaultAzureCredential()
-                return DataLakeServiceClient(
-                    account_url=f"https://{self.account_name}.dfs.core.windows.net",
-                    credential=credential,
-                )
-            else:
-                raise ValueError(
-                    "Azure Storage configuration is incomplete. Please provide either "
-                    "connection_string, account_name with account_key, or account_name "
-                    "for managed identity."
-                )
-
-        except Exception as e:
-            log.error(f"Failed to create Azure Data Lake Service Client: {e}")
-            raise
-
-    def _ensure_file_system_exists(self):
-        """Ensure the target file system exists."""
-        try:
-            self.file_system_client.get_file_system_properties()
-        except ResourceNotFoundError:
-            log.info(f"Creating file system: {self.file_system_name}")
-            self.file_system_client.create_file_system()
+    def _build_service_bus_settings(self):
+        if not (self.servicebus_connection_string and self.servicebus_queue_name):
+            return None
+        return ServiceBusSettings(
+            connection_string=self.servicebus_connection_string,
+            queue_name=self.servicebus_queue_name,
+        )
 
     def is_emulator_mode(self):
         """Check if running in emulator mode"""
@@ -206,7 +198,7 @@ class AzureBlobStorage(_UploadBase):
     def test_connection(self):
         """Test Azure Storage connection"""
         try:
-            self.file_system_client.get_file_system_properties()
+            self.client.ensure_file_system()
             return True
         except Exception as e:
             log.error(f"Azure Storage connection test failed: {e}")
@@ -231,30 +223,17 @@ class AzureBlobStorage(_UploadBase):
                 mimetypes.guess_type(self.filename)[0] or "application/octet-stream"
             )
 
-            file_client = self.file_system_client.get_file_client(file_path)
-            file_client.upload_data(
-                data=content,
+            self.client.upload(
+                file_path,
+                content,
                 overwrite=True,
                 metadata={
                     "original_filename": self.filename,
                     "upload_time": datetime.now(timezone.utc).isoformat(),
                     "ckan_resource": "true",
                 },
+                content_type=content_type,
             )
-
-            # Keep content type as a metadata fallback in case setting HTTP headers
-            # is not supported by the target endpoint/emulator.
-            try:
-                file_client.set_http_headers(
-                    content_settings=ContentSettings(content_type=content_type)
-                )
-            except (
-                TypeError,
-                AzureError,
-            ):  # pragma: no cover - best-effort compatibility
-                log.debug(
-                    "Skipping Data Lake content-type header update for uploaded file."
-                )
 
             self.filename = file_path
             self.url = self._get_blob_url(file_path)
@@ -282,51 +261,11 @@ class AzureBlobStorage(_UploadBase):
         file_path = file_path.lstrip("/")
         if not file_path or file_path.endswith("/"):
             raise ValueError("Invalid file path for SAS URL generation")
-        file_client = self.file_system_client.get_file_client(file_path)
         try:
-            if self.use_emulator:
-                return file_client.url
-
-            directory_name, _, file_name = file_path.rpartition("/")
-            if not file_name:
-                raise ValueError("Invalid file path for SAS URL generation")
-
-            expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-            permission = FileSasPermissions(read=True)
-
-            if self.account_key:
-                sas_token = generate_file_sas(
-                    account_name=self.account_name,
-                    file_system_name=self.file_system_name,
-                    directory_name=directory_name,
-                    file_name=file_name,
-                    credential=self.account_key,
-                    permission=permission,
-                    expiry=expiry,
-                )
-            else:
-                start = datetime.now(timezone.utc) - timedelta(minutes=5)
-                user_delegation_key = (
-                    self.data_lake_service_client.get_user_delegation_key(
-                        key_start_time=start,
-                        key_expiry_time=expiry,
-                    )
-                )
-                sas_token = generate_file_sas(
-                    account_name=self.account_name,
-                    file_system_name=self.file_system_name,
-                    directory_name=directory_name,
-                    file_name=file_name,
-                    credential=user_delegation_key,
-                    permission=permission,
-                    expiry=expiry,
-                )
-
-            return f"{file_client.url}?{sas_token}"
-
+            return self.client.open_download_context(file_path).sas_url
         except Exception as e:
             log.error(f"Failed to generate file URL: {e}")
-            return file_client.url
+            return self.client.url_for(file_path)
 
     def _send_file_event(self, event_type, file_path):
         """Send file event to Service Bus queue, fallback to Event Hub."""
@@ -349,16 +288,7 @@ class AzureBlobStorage(_UploadBase):
     def _send_servicebus_event(self, event_data):
         """Send file event to Azure Service Bus queue."""
         try:
-            from azure.servicebus import ServiceBusClient, ServiceBusMessage
-
-            with ServiceBusClient.from_connection_string(
-                self.servicebus_connection_string
-            ) as client:
-                with client.get_queue_sender(
-                    queue_name=self.servicebus_queue_name
-                ) as sender:
-                    sender.send_messages(ServiceBusMessage(json.dumps(event_data)))
-
+            self.client.publish_change(event_data)
             log.info(
                 f"File event sent to Service Bus queue: "
                 f"{event_data['event_type']} - {event_data['blob_name']}"
@@ -420,21 +350,15 @@ class AzureBlobStorage(_UploadBase):
                             # Upload file to Azure
                             with open(file_path, "rb") as f:
                                 blob_name = f"migrated/{rel_path}"
-                                file_client = self.file_system_client.get_file_client(
-                                    blob_name
-                                )
-
-                                try:
-                                    file_client.get_file_properties()
+                                if self.client.exists(blob_name):
                                     log.info(
                                         f"Blob already exists, skipping: {blob_name}"
                                     )
                                     continue
-                                except ResourceNotFoundError:
-                                    pass
 
-                                file_client.upload_data(
-                                    data=f,
+                                self.client.upload(
+                                    blob_name,
+                                    f,
                                     overwrite=False,
                                     metadata={
                                         "original_path": rel_path,

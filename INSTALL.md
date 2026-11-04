@@ -12,6 +12,7 @@ This guide provides step-by-step instructions for installing and configuring the
 > the single source of truth for these constraints. A pytest regression
 > check (`ckanext/native_cloud_storage/tests/test_packaging_metadata.py`)
 > fails CI if this document drifts from `pyproject.toml`.
+
 - Docker (for development with emulators)
 - Azure Storage Account (for production) or Azure Storage Emulator (for development)
 
@@ -29,6 +30,10 @@ cd ckanext-native-cloud-storage
 pip install -e .
 pip install -r requirements.txt
 ```
+
+The extension depends on [azure-data-lake-fs](https://github.com/Skitionek/azure-data-lake-fs), which is not on PyPI
+yet and is installed from GitHub at the commit pinned in `pyproject.toml`, so `git` must be available where you run
+`pip install`.
 
 ### 2. Development Setup with Emulators
 
