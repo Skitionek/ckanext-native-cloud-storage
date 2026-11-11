@@ -58,3 +58,9 @@ who.ini
 
 # MegaLinter reports
 megalinter-reports/.venv-full/
+
+# Local self-signed TLS pair for the nginx devcontainer. These are regenerated
+# at container runtime (nginx Dockerfile ENTRYPOINT runs openssl) and must never
+# be committed.
+.devcontainer/ckan-docker/nginx/setup/ckan-local.key
+.devcontainer/ckan-docker/nginx/setup/ckan-local.crt
